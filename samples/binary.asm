@@ -5,11 +5,10 @@ segment readable executable
 entry _start
 
 _start:
-mov rax, 4
-cmp rax, 2
-setne al
-movzx rax, al
-mov rdi, rax
+mov rax, 2
+imul rax, 3
+mov rdi, 1
+add rdi, rax
 
   mov rax, 60
   syscall

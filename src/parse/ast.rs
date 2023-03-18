@@ -1,6 +1,19 @@
-use crate::span::Span;
-use crate::token::Token;
+use crate::lexer::{
+    Span,
+    Token,
+};
 use std::str::FromStr;
+
+#[derive(Debug, Clone)]
+pub enum Item {
+    Statement(Statement),
+}
+
+#[derive(Debug, Clone)]
+pub struct Statement {
+    pub stmt: Expr,
+    pub span: Span,
+}
 
 #[derive(Debug, Clone)]
 pub struct LitInt {
@@ -9,7 +22,7 @@ pub struct LitInt {
 }
 
 impl LitInt {
-    pub fn parse<T: FromStr>(&self) -> Result<T, <T as FromStr>::Err> {
+    pub fn _parse<T: FromStr>(&self) -> Result<T, <T as FromStr>::Err> {
         self.value.parse::<T>()
     }
 }
@@ -45,6 +58,14 @@ pub struct Binary {
     pub op: Token,
 }
 
+impl Binary {
+    pub fn span(&self) -> Span {
+        let start = self.left.span();
+        let end = self.right.span();
+        Span::new(start.line, start.start, end.end)
+    }
+}
+
 impl From<(Expr, Expr, &Token)> for Binary {
     fn from((left, right, op): (Expr, Expr, &Token)) -> Self {
         Self {
@@ -61,10 +82,28 @@ pub enum Lit {
     Bool(LitBool),
 }
 
+impl Lit {
+    pub fn span(&self) -> Span {
+        match self {
+            Self::Int(int) => int.span,
+            Self::Bool(bl) => bl.span,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum Expr {
     Lit(Lit),
     Binary(Binary),
+}
+
+impl Expr {
+    pub fn span(&self) -> Span {
+        match self {
+            Self::Lit(lit) => lit.span(),
+            Self::Binary(binary) => binary.span(),
+        }
+    }
 }
 
 impl From<LitBool> for Expr {

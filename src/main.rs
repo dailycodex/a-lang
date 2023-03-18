@@ -1,12 +1,8 @@
-use std::{fs::OpenOptions, io::Write, process::Command};
+use std::process::Command;
 
-mod asm_code_gen;
-mod ast;
-mod ir_code_gen;
+mod code_gen;
 mod lexer;
-mod parser;
-mod span;
-mod token;
+mod parse;
 
 fn compile(filename: impl Into<String>) {
     let filename = filename.into();
@@ -16,13 +12,13 @@ fn compile(filename: impl Into<String>) {
     let Some(asm_code) = lexer::lex(&src)
         // .and_then(|tokens| Ok(dbg!(tokens)))
         .map_err(|err| dbg!(err))
-        .and_then(|tokens| parser::parse(tokens))
+        .and_then(|tokens| parse::parse(tokens))
         // .and_then(|ast| Ok(dbg!(ast)))
         .map_err(|err| dbg!(err))
-        .and_then(|ast| Ok(ir_code_gen::code_gen(&ast)))
+        .and_then(|ast| Ok(code_gen::ir::code_gen(&ast)))
         // .and_then(|blocks| Ok(dbg!(blocks)))
         .map_err(|err| dbg!(err))
-        .and_then(|blocks| Ok(asm_code_gen::code_gen(&blocks)))
+        .and_then(|blocks| Ok(code_gen::x86_64_linux::code_gen(&blocks)))
         // .and_then(|asm| Ok(dbg!(asm)))
         .map_err(|err| dbg!(err))
         .ok() else {

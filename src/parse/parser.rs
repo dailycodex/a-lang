@@ -1,18 +1,24 @@
-use crate::ast::*;
-use crate::token::{Token, TokenKind};
+use super::{
+    Item,
+    Statement,
+    LitInt,
+    LitBool,
+    Expr,
+    Binary,
+    Token,
+    TokenKind
+};
 use std::iter::Peekable;
 use std::slice::Iter;
 
-pub fn parse(tokens: Vec<Token>) -> Result<Expr, Vec<String>> {
-    let stream = tokens.iter().peekable();
-    Parser::new(stream).parse()
-}
 
 pub struct Parser<'a> {
     stream: Peekable<Iter<'a, Token>>,
     errors: Vec<String>,
 }
 
+// declaration
+// statement
 // expression
 // equality
 // comparison
@@ -22,18 +28,26 @@ pub struct Parser<'a> {
 // primary
 
 impl<'a> Parser<'a> {
-    fn new(stream: Peekable<Iter<'a, Token>>) -> Self {
+    pub fn new(stream: Peekable<Iter<'a, Token>>) -> Self {
         Self {
             stream,
             errors: vec![],
         }
     }
 
-    fn parse(mut self) -> Result<Expr, Vec<String>> {
-        if !self.errors.is_empty() {
-            return Err(self.errors);
+    pub fn parse(mut self) -> Result<Item, Vec<String>> {
+        match self.statement() {
+            Ok(item) => {
+                if !self.errors.is_empty() {
+                    return Err(self.errors);
+                }
+                Ok(item)
+            }
+            Err(error) => {
+                self.errors.push(error);
+                Err(self.errors)
+            }
         }
-        Ok(self.expression())
     }
 
     fn match_on(&mut self, expected: &[TokenKind]) -> bool {
@@ -49,6 +63,18 @@ impl<'a> Parser<'a> {
             }
         }
         false
+    }
+
+    fn statement(&mut self) -> Result<Item, String> {
+        let stmt = self.expression();
+        let span = stmt.span();
+        let Some(TokenKind::SemiColon) = self.stream.peek().map(|i| i.kind()) else {
+            return Err(format!("Statements end in ';' {stmt:?}"));
+        };
+        Ok(Item::Statement(Statement {
+            stmt,
+            span,
+        }))
     }
 
     fn expression(&mut self) -> Expr {

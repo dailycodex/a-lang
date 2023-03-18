@@ -1,11 +1,9 @@
-use crate::span::Span;
-use crate::token::Token;
+use super::{
+    Span,
+    Token,
+};
 use std::iter::Peekable;
 use std::str::Chars;
-
-pub fn lex(src: &str) -> Result<Vec<Token>, Vec<String>> {
-    Lexer::new(src).lex()
-}
 
 pub struct Lexer<'a> {
     src: Peekable<Chars<'a>>,
