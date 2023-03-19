@@ -1,5 +1,5 @@
-use std::fmt;
 use super::Reg8;
+use std::fmt;
 
 #[repr(usize)]
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]

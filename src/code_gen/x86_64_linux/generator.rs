@@ -1,18 +1,5 @@
-use super::{
-    X86Reg,
-    Reg64,
-    Discripter,
-    Instruction,
-    Mnemonic,
-};
-use crate::code_gen::ir::{
-    Op,
-    BlockType,
-    Input,
-    Value,
-    Reg,
-    Assignment,
-};
+use super::{Discripter, Instruction, Mnemonic, Reg64, RegPreserved64, X86Reg};
+use crate::code_gen::ir::{Assignment, BlockType, Input, Label, Op, Reg, Value, Var};
 use either::Either;
 use std::{collections::HashMap, fmt};
 
@@ -24,16 +11,52 @@ pub struct AsmGenerator {
 }
 
 impl AsmGenerator {
+    pub fn comment(&mut self, comment: impl Into<String>) {
+        self.code.push(Instruction::default().comment(comment))
+    }
+
     pub fn return_last_reg_in_exit(&mut self) {
         if let Some((_, xreg)) = self.discripter.iter().max() {
             if *xreg != X86Reg::Reg64(Reg64::Rdi) {
-                self.code.push(Instruction {
-                    mnemonic: Mnemonic::Move,
-                    arg1: Reg64::Rdi.into(),
-                    arg2: Some(Either::Right(*xreg)),
-                });
+                self.code.push(
+                    Instruction::default()
+                        .mnemonic(Mnemonic::Move)
+                        .arg1_reg(Reg64::Rdi)
+                        .arg2_reg(*xreg),
+                );
             }
         }
+    }
+
+    fn enter(&mut self) {
+  // ; enter
+  // push rbp
+  // mov rbp, rsp
+  //
+        self.code.push(Instruction::default()
+                  .mnemonic(Mnemonic::Push)
+                  .arg1_reg(RegPreserved64::Rbp));
+        self.code.push(Instruction::default()
+                  .mnemonic(Mnemonic::Move)
+                  .arg1_reg(RegPreserved64::Rbp)
+                  .arg2_reg(RegPreserved64::Rsp));
+
+    }
+
+    fn leave(&mut self) {
+  // ; leave
+  // mov rsp, rbp
+  // pop rbp
+  // ret
+        self.code.push(Instruction::default()
+                  .mnemonic(Mnemonic::Move)
+                  .arg1_reg(RegPreserved64::Rsp)
+                  .arg2_reg(RegPreserved64::Rbp));
+        self.code.push(Instruction::default()
+                  .mnemonic(Mnemonic::Pop)
+                  .arg1_reg(RegPreserved64::Rbp));
+        self.code.push(Instruction::default().mnemonic(Mnemonic::Return));
+
     }
 
     fn get_reg(&mut self) -> X86Reg {
@@ -81,11 +104,12 @@ impl AsmGenerator {
     fn mov(&mut self, value: String) -> Either<u64, X86Reg> {
         let des = self.get_reg();
         let num = value.parse::<u64>().unwrap();
-        self.code.push(Instruction {
-            mnemonic: Mnemonic::Move,
-            arg1: des,
-            arg2: Some(Either::Left(num)),
-        });
+        self.code.push(
+            Instruction::default()
+                .mnemonic(Mnemonic::Move)
+                .arg1_reg(des)
+                .arg2_value(num),
+        );
         Either::Right(des.into())
     }
 
@@ -100,21 +124,22 @@ impl AsmGenerator {
             _ => None,
         };
         if let Some(mnemonic) = mnemonic {
-            self.instruction(mnemonic, arg1.lower_8bit(), None);
             self.instruction(
-                Mnemonic::MoveZx,
-                arg1.into(),
-                Some(Either::Right(arg1.lower_8bit().into())),
+                Instruction::default()
+                    .mnemonic(mnemonic)
+                    .arg1_reg(arg1.lower_8bit()),
+            );
+            self.instruction(
+                Instruction::default()
+                    .mnemonic(Mnemonic::MoveZx)
+                    .arg1_reg(arg1)
+                    .arg2_reg(arg1.lower_8bit()),
             );
         }
     }
 
-    fn instruction(&mut self, mnemonic: Mnemonic, arg1: X86Reg, arg2: Option<Either<u64, X86Reg>>) {
-        self.code.push(Instruction {
-            mnemonic,
-            arg1,
-            arg2,
-        });
+    fn instruction(&mut self, instruction: Instruction) {
+        self.code.push(instruction);
     }
 
     fn visit_op(&mut self, op: &Op) -> Mnemonic {
@@ -145,11 +170,28 @@ impl AsmGenerator {
         value.to_string()
     }
 
+    fn visit_var(&mut self, _var: &Var) -> Either<String, X86Reg> {
+        todo!()
+    }
+
     fn visit_input(&mut self, input: &Input) -> Either<String, X86Reg> {
         match input {
             Input::Reg(reg) => Either::Right(self.visit_reg(reg)),
             Input::Value(value) => Either::Left(self.visit_value(value)),
+            Input::Var(var) => self.visit_var(var),
         }
+    }
+
+    fn visit_label(&mut self, label: &Label) {
+        self.instruction(Instruction::default().label(label.0.clone()));
+    }
+
+    fn visit_jump(&mut self, label: &Label) {
+        self.instruction(
+            Instruction::default()
+                .mnemonic(Mnemonic::Jump)
+                .arg1_label(label.0.clone()),
+        );
     }
 
     fn visit_assignment(&mut self, block_type: &Assignment) {
@@ -161,11 +203,15 @@ impl AsmGenerator {
             .right_and_then(|x86reg| self.regester_reg(x86reg, des))
             .right()
             .unwrap();
-        let arg2 =
-            Some(self.visit_input(y).left_and_then(|string| {
-                Either::<u64, X86Reg>::Left(string.parse::<u64>().unwrap())
-            }));
-        self.instruction(mnemonic, arg1.into(), arg2);
+        let arg2 = self
+            .visit_input(y)
+            .left_and_then(|string| Either::<u64, X86Reg>::Left(string.parse::<u64>().unwrap()));
+        self.instruction(
+            Instruction::default()
+                .mnemonic(mnemonic)
+                .arg1_reg(arg1)
+                .arg2(arg2),
+        );
         self.op_instruction(op, arg1);
         // self.release_reg(arg1);
         // arg2.map(|x| x.right_and_then(|x| {
@@ -174,13 +220,22 @@ impl AsmGenerator {
         // }));
     }
 
+    // fn visit_proc(&mut self, proc: &Proedure) {
+    //     let Proedure { label, params, ret, body } = proc;
+    //
+    // }
+
     pub fn compile(&mut self, basic_block: &BlockType) {
         match basic_block {
             BlockType::Assignment(assignment) => self.visit_assignment(assignment),
             BlockType::Copy { .. } => unimplemented!(),
-            BlockType::Conditional { .. } => unimplemented!(),
-            BlockType::Jump { .. } => unimplemented!(),
-            BlockType::Label { .. } => unimplemented!(),
+            BlockType::Conditional(..) => unimplemented!(),
+            BlockType::Jump(label) => self.visit_jump(label),
+            BlockType::Label(label) => self.visit_label(label),
+            BlockType::Call(..) => unimplemented!(),
+            BlockType::Enter => self.enter(),
+            BlockType::Leave => self.leave(),
+            // BlockType::Procedure(proc) => self.visit_proc(proc),
         }
     }
 }

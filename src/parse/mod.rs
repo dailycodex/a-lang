@@ -2,13 +2,7 @@ mod ast;
 mod parser;
 
 pub use ast::{
-    Item,
-    Statement,
-    Lit,
-    LitInt,
-    LitBool,
-    Expr,
-    Binary,
+    Binary, Block, Expr, Item, ItemFn, Lit, LitBool, LitInt, Name, Param, Statement, Type,
 };
 
 use parser::Parser;

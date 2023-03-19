@@ -1,10 +1,11 @@
-use crate::code_gen::ir::Reg;
 use super::X86Reg;
+use crate::code_gen::ir::{Reg, Var};
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Discripter {
     X86Reg(X86Reg),
     IrReg(Reg),
+    Var(Var),
 }
 
 impl From<&X86Reg> for Discripter {

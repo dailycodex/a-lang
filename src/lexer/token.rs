@@ -1,7 +1,4 @@
-use super::{
-    TokenKind,
-    Span,
-};
+use super::{Span, TokenKind};
 
 macro_rules! is_a {
     ($kind:ident, $id:ident, $name:ident) => {

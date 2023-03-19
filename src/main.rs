@@ -10,16 +10,13 @@ fn compile(filename: impl Into<String>) {
     let src = std::fs::read_to_string(&filename).expect("failed to read from file");
 
     let Some(asm_code) = lexer::lex(&src)
-        // .and_then(|tokens| Ok(dbg!(tokens)))
-        .map_err(|err| dbg!(err))
+        .and_then(|tokens| Ok(dbg!(tokens)))
         .and_then(|tokens| parse::parse(tokens))
-        // .and_then(|ast| Ok(dbg!(ast)))
-        .map_err(|err| dbg!(err))
+        .and_then(|ast| Ok(dbg!(ast)))
         .and_then(|ast| Ok(code_gen::ir::code_gen(&ast)))
-        // .and_then(|blocks| Ok(dbg!(blocks)))
-        .map_err(|err| dbg!(err))
+        .and_then(|blocks| Ok(dbg!(blocks)))
         .and_then(|blocks| Ok(code_gen::x86_64_linux::code_gen(&blocks)))
-        // .and_then(|asm| Ok(dbg!(asm)))
+        .and_then(|asm| Ok(dbg!(asm)))
         .map_err(|err| dbg!(err))
         .ok() else {
             eprintln!("failed to compile");

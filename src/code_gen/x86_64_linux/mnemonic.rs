@@ -2,7 +2,12 @@ use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Mnemonic {
+    Call,
+    Return,
     Move,
+    Jump,
+    Push,
+    Pop,
     MoveZx,
     Add,
     Sub,
@@ -20,7 +25,12 @@ pub enum Mnemonic {
 impl fmt::Display for Mnemonic {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Call => write!(f, "call"),
+            Self::Return => write!(f, "ret"),
             Self::Move => write!(f, "mov"),
+            Self::Jump => write!(f, "jmp"),
+            Self::Push => write!(f, "push"),
+            Self::Pop => write!(f, "pop"),
             Self::MoveZx => write!(f, "movzx"),
             Self::Add => write!(f, "add"),
             Self::Sub => write!(f, "sub"),

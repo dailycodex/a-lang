@@ -1,13 +1,11 @@
-use super::{
-    reg64::Reg64,
-    reg8::Reg8,
-};
+use super::{Reg64, Reg8, RegPreserved64};
 use std::fmt;
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
 pub enum X86Reg {
     Reg64(Reg64),
     Reg8(Reg8),
+    RegPre64(RegPreserved64),
 }
 
 impl X86Reg {
@@ -22,6 +20,7 @@ impl X86Reg {
         match self {
             X86Reg::Reg64(r) => *r as usize,
             X86Reg::Reg8(r) => *r as usize,
+            X86Reg::RegPre64(r) => unimplemented!(),
         }
     }
 }
@@ -38,11 +37,18 @@ impl From<Reg8> for X86Reg {
     }
 }
 
+impl From<RegPreserved64> for X86Reg {
+    fn from(value: RegPreserved64) -> Self {
+        Self::RegPre64(value)
+    }
+}
+
 impl fmt::Display for X86Reg {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Reg64(reg) => write!(f, "{reg}"),
             Self::Reg8(reg) => write!(f, "{reg}"),
+            Self::RegPre64(reg) => write!(f, "{reg}"),
         }
     }
 }

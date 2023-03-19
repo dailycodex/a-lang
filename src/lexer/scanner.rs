@@ -1,7 +1,4 @@
-use super::{
-    Span,
-    Token,
-};
+use super::{Span, Token};
 use std::iter::Peekable;
 use std::str::Chars;
 
@@ -135,7 +132,7 @@ impl<'a> Lexer<'a> {
             '!' => self.op_token("!"),
             '%' => self.op_token("%"),
             '.' => self.op_token("."),
-            ',' => self.op_token(","),
+            ',' => self.ctrl_token(","),
             '(' => self.ctrl_token("("),
             ')' => self.ctrl_token(")"),
             '{' => self.ctrl_token("{"),

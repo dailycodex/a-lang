@@ -1,12 +1,74 @@
-use crate::lexer::{
-    Span,
-    Token,
-};
+use crate::lexer::{Span, Token};
 use std::str::FromStr;
 
 #[derive(Debug, Clone)]
+pub struct Type {
+    pub name: Name,
+    pub span: Span,
+}
+
+impl From<&Token> for Type {
+    fn from(value: &Token) -> Self {
+        Self {
+            name: value.into(),
+            span: value.span(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum Item {
-    Statement(Statement),
+    Fn(ItemFn),
+}
+
+#[derive(Debug, Clone)]
+pub struct Name {
+    pub name: String,
+    pub span: Span,
+}
+
+impl From<&Token> for Name {
+    fn from(value: &Token) -> Self {
+        Self {
+            name: value.lexme(),
+            span: value.span(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Param {
+    pub name: String,
+    pub kind: Type,
+    pub span: Span,
+}
+
+impl From<(&Token, &Token)> for Param {
+    fn from((name, kind): (&Token, &Token)) -> Self {
+        let start_span = name.span();
+        let end_span = kind.span();
+        let span = Span::new(start_span.line, start_span.start, end_span.end);
+        Self {
+            name: name.lexme(),
+            kind: kind.into(),
+            span,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ItemFn {
+    pub name: Name,
+    pub params: Vec<Param>,
+    pub block: Block,
+    pub ret_type: Option<Type>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct Block {
+    pub stmts: Vec<Statement>,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone)]
@@ -91,10 +153,24 @@ impl Lit {
     }
 }
 
+// #[derive(Debug, Clone)]
+// pub struct ExprCall {
+//     pub name: Name,
+//     pub args: Vec<Expr>,
+//     pub span: Span,
+// }
+//
+// impl ExprCall {
+//     pub fn span(&self) -> Span {
+//         self.span
+//     }
+// }
+
 #[derive(Debug, Clone)]
 pub enum Expr {
     Lit(Lit),
     Binary(Binary),
+    // Call(ExprCall),
 }
 
 impl Expr {
@@ -102,6 +178,7 @@ impl Expr {
         match self {
             Self::Lit(lit) => lit.span(),
             Self::Binary(binary) => binary.span(),
+            // Self::Call(expr_call) => expr_call.span(),
         }
     }
 }
