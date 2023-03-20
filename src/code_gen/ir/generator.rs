@@ -1,7 +1,25 @@
-use super::{IrBlock, Assignment, Label, BasicBlock, BlockType, Input, Op, Reg, Value};
+use super::{
+    Assignment,
+    BasicBlock,
+    BlockType,
+    Call,
+    DefLabel,
+    Enter,
+    Input,
+    Label,
+    Leave,
+    Op,
+    Reg,
+    Value,
+    Var,
+};
 
 use crate::parse::{
-    Binary, Block, Expr, Item, ItemFn, Lit, LitBool, LitInt, Name, Param, Statement,
+    Binary,
+    Block,
+    Expr,
+    ExprCall,
+    Item, ItemFn, Lit, LitBool, LitInt, Name, Param, Statement,
 };
 
 #[derive(Debug, Default)]
@@ -13,17 +31,21 @@ pub struct IrGenerator {
 
 impl IrGenerator {
     fn enter(&mut self) {
-        self.push(BlockType::Enter);
+        self.push(Enter);
     }
 
     fn leave(&mut self) {
-        self.push(BlockType::Leave);
+        self.push(Leave);
         self.push_block();
     }
 
-    fn push(&mut self, block: BlockType) {
+    fn push(&mut self, block: impl Into<BlockType>) {
+        let block = block.into();
         if block.is_enter() {
-            self.code.push(BasicBlock::from((self.current_block.clone(), "enter block".into())));
+            self.code.push(BasicBlock::from((
+                self.current_block.clone(),
+                "enter block".into(),
+            )));
             self.current_block.clear();
             self.current_block.push(block);
             return;
@@ -31,7 +53,10 @@ impl IrGenerator {
         let is_exit = block.is_exit();
         self.current_block.push(block);
         if is_exit {
-            self.code.push(BasicBlock::from((self.current_block.clone(), "exit".into())));
+            self.code.push(BasicBlock::from((
+                self.current_block.clone(),
+                "exit".into(),
+            )));
             self.current_block.clear();
         }
     }
@@ -50,6 +75,10 @@ impl IrGenerator {
         Reg(r)
     }
 
+    fn visit_var(&mut self, var: &ExprVar) -> IrVar {
+        IrVar(var.name.name.to_string())
+    }
+
     fn visit_litbool(&mut self, lit_bool: &LitBool) -> Value {
         Value((lit_bool.value.parse::<bool>().unwrap() as usize).to_string())
     }
@@ -62,23 +91,14 @@ impl IrGenerator {
         let mut unfold_expr = |expr| match expr {
             Expr::Lit(ref lit) => self.visit_lit(lit),
             Expr::Binary(ref binary) => Input::Reg(self.visit_binary(binary)),
+            Expr::Call(ref caller) => Input::Reg(self.visit_call(caller)),
+            Expr::Var(ref var) => Input::Var(self.visit_var(var)),
         };
         let lhs = unfold_expr(Clone::clone(&binary.left));
         let rhs = unfold_expr(Clone::clone(&binary.right));
         let des = self.get_reg();
-        self.push(
-        IrBlock::default()
-            .des(des)
-            .op(Op::from(binary.op.kind()))
-            .arg1(lhs)
-            .arg2(rhs)
-            .build());
-        // self.current_block.push(BlockType::Assignment(Assignment {
-        //     des: des.clone(),
-        //     op: Op::from(binary.op.kind()),
-        //     x: lhs,
-        //     y: rhs,
-        // }));
+        let op = Op::from(binary.op.kind());
+        self.push(Assignment { des, op, lhs, rhs });
         des
     }
 
@@ -88,11 +108,20 @@ impl IrGenerator {
             Lit::Bool(boolean) => Input::Value(self.visit_litbool(boolean)),
         }
     }
+
+    fn visit_call(&mut self, caller: &ExprCall) -> Reg {
+        let ExprCall { caller, args, .. } = caller;
+        todo!()
+    }
+
     fn visit_expr(&mut self, expr: &Expr) {
         match expr {
             Expr::Lit(..) => unimplemented!(),
             Expr::Binary(ref binary) => {
                 self.visit_binary(binary);
+            }
+            Expr::Call(call) => {
+                self.visit_call(call);
             }
         }
     }
@@ -109,13 +138,6 @@ impl IrGenerator {
     }
 
     fn visit_item_fn(&mut self, item_fn: &ItemFn) {
-        // prolog
-        // Make a label for function
-        // pull in all params in local vars
-        // get BasicBlock
-        // set return
-        // epilog
-        //
         let ItemFn {
             name,
             params,
@@ -123,18 +145,10 @@ impl IrGenerator {
             ret_type,
             ..
         } = item_fn;
-        self.push(IrBlock::default().label(name.into()).build());
+        self.push(DefLabel { label: name.into() });
         self.enter();
         self.visit_block(block);
         self.leave();
-        // let basic_block = BlockType::Procedure(Proedure {
-        //     label: name.into(),
-        //     params: params.iter().map(From::from).collect(),
-        //     ret: ret_type.is_some(),
-        //     body: BasicBlock { blocks: self.current_block.clone() },
-        // });
-        // self.current_block.clear();
-        // self.current_block.push(basic_block);
     }
 
     pub fn compile(mut self, item: &Item) -> Vec<BasicBlock> {

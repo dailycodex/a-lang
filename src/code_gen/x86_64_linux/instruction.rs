@@ -73,7 +73,11 @@ impl fmt::Display for Instruction {
             .as_ref()
             .map(|i| format!("__{i}__:\n"))
             .unwrap_or_default();
-        let comment = self.comment.as_ref().map(|i|format!("; {i}")).unwrap_or_default();
+        let comment = self
+            .comment
+            .as_ref()
+            .map(|i| format!("; {i}"))
+            .unwrap_or_default();
         write!(f, "{label}{mnemonic}{comment}\n")
     }
 }

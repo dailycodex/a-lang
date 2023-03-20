@@ -1,4 +1,4 @@
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Span {
     pub start: usize,
     pub end: usize,
@@ -30,6 +30,16 @@ impl From<&Span> for Span {
             start: other.end,
             end: other.end,
             line: other.line,
+        }
+    }
+}
+
+impl From<(Span, Span)> for Span {
+    fn from((x, y): (Self, Self)) -> Self {
+        Self {
+            start: x.start,
+            end: y.end,
+            line: x.line,
         }
     }
 }

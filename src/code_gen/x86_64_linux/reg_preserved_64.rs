@@ -18,8 +18,8 @@ impl fmt::Display for RegPreserved64 {
             Self::Rbp => write!(f, "rbp"),
             Self::R12 => write!(f, "r12"),
             Self::R13 => write!(f, "r13"),
-            Self::R14=> write!(f,  "r14"),
-            Self::R15=> write!(f,  "r15"),
+            Self::R14 => write!(f, "r14"),
+            Self::R15 => write!(f, "r15"),
         }
     }
 }

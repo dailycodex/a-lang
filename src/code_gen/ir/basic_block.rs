@@ -9,7 +9,8 @@ pub struct BasicBlock {
 impl BasicBlock {
     pub fn new(blocks: Vec<BlockType>) -> Self {
         Self {
-            blocks, comment: None,
+            blocks,
+            comment: None,
         }
     }
 

@@ -1,0 +1,299 @@
+use super::{
+    OpAdd,
+    OpSub,
+    OpMul,
+    OpDiv,
+    OpGrt,
+    OpLes,
+    OpGeq,
+    OpLeq,
+    OpNeq,
+    OpNot,
+    OpEqual,
+    OpEqualEqual,
+    CtrlStar,
+    CtrlSlash,
+    CtrlSemiColon,
+    CtrlColon,
+    CtrlComma,
+    CtrlDot,
+    CtrlLBrace,
+    CtrlRBrace,
+    CtrlLBracet,
+    CtrlRBracet,
+    CtrlLParan,
+    CtrlRParan,
+    CtrlRightArrow,
+    CtrlThickRightArrow,
+    Item,
+    ItemFn,
+    Expr,
+    ExprLit,
+    ExprBinary,
+    ExprCall,
+    ExprVar,
+    Lit,
+    LitBool,
+    LitInt,
+    LitStr,
+    LitChar,
+    Ident,
+    Param,
+    Statement,
+    Block,
+    Type,
+    keyword,
+};
+
+use crate::lexer::{TokenStream, Span, Token};
+
+pub struct Parser {
+    stream: TokenStream,
+    errors: Vec<String>,
+}
+
+// declaration
+// statement
+// expression
+// equality
+// comparison
+// term
+// factor
+// unary
+// primary
+
+impl Parser {
+    pub fn new(stream: TokenStream) -> Self {
+        Self {
+            stream,
+            errors: vec![],
+        }
+    }
+
+    pub fn parse(mut self) -> Result<Item, Vec<String>> {
+        match self.program() {
+            Ok(item) => {
+                if !self.errors.is_empty() {
+                    return Err(self.errors);
+                }
+                Ok(item)
+            }
+            Err(error) => {
+                self.errors.push(error);
+                Err(self.errors)
+            }
+        }
+    }
+
+//     fn match_on(&mut self, expected: &[TokenKind]) -> bool {
+//         let kind = self
+//             .stream
+//             .peek()
+//             .as_ref()
+//             .map(|t| t.kind())
+//             .unwrap_or(TokenKind::Eof);
+//         for token_kind in expected {
+//             if token_kind == &kind {
+//                 return true;
+//             }
+//         }
+//         false
+//     }
+//
+    fn program(&mut self) -> Result<Item, String> {
+        self.declaration()
+    }
+
+    fn declaration(&mut self) -> Result<Item, String> {
+        self.item_fn()
+    }
+
+    fn item_fn(&mut self) -> Result<Item, String> {
+        let start_span = self.stream.next_if::<keyword::Fn>()
+            .ok_or::<String>("expected fn".into())?
+            .span();
+        let name = self.stream.next_if::<Ident>().ok_or("expected a ident".into())?.clone();
+        let params = self.params()?;
+        let ret_type = self.ret_type()?;
+        let block = self.block()?;
+        let end_span = block.span;
+        let span = Span::new(start_span.line, start_span.start, end_span.end);
+        Ok(Item::Fn(ItemFn {
+            name,
+            params,
+            block,
+            ret_type,
+            span,
+        }))
+    }
+
+    fn ret_type(&mut self) -> Result<Option<Type>, String> {
+        let Some(_) = self.stream.next_if::<CtrlRightArrow>() else {
+            return Ok(None);
+        };
+        let Some(t) = self.stream.next_if::<Ident>() else {
+            return Err("expected return type".into());
+        };
+        Ok(Some(t.into()))
+    }
+
+    fn params(&mut self) -> Result<Vec<Param>, String> {
+        self.stream.next_if::<CtrlLParan>()
+            .ok_or::<String>("expected '('".into())?;
+        let mut params = vec![];
+        while self
+            .stream
+            .is_peek_a::<CtrlRParan>()
+        {
+            let name = match self.stream.next_if::<Ident>() {
+                Some(t) => t,
+                None => break,
+            };
+
+            self.stream
+                .next_if::<CtrlColon>()
+                .ok_or::<String>("expected ':' after function param id".into())?;
+
+            let kind = match self.stream.next_if::<Ident>() {
+                Some(t) => t,
+                None => break,
+            };
+            params.push((name, kind).into());
+            if let None = self.stream.next_if::<CtrlComma>() {
+                break;
+            }
+        }
+        self.stream.next_if::<CtrlRParan>()
+            .ok_or::<String>("functions params end with ')'".into())?;
+        Ok(params)
+    }
+
+    fn block(&mut self) -> Result<Block, String> {
+        let start_span = self.stream
+            .next_if::<CtrlLBrace>()
+            .ok_or::<String>("expected '{'".into())?
+            .span();
+        let mut stmts = vec![];
+        while !self
+            .stream
+            .is_peek_a::<CtrlRBrace>()
+        {
+            let stmt = self.statement()?;
+            stmts.push(stmt);
+        }
+        let end_span = self.stream
+            .next_if::<CtrlRBrace>()
+            .ok_or::<String>("expected '}'".into())?
+            .span();
+        let span = Span::new(start_span.line, start_span.start, end_span.end);
+        Ok(Block { stmts, span })
+    }
+
+    fn statement(&mut self) -> Result<Statement, String> {
+        let stmt = self.expression();
+        let span = stmt.span();
+        self.stream.next_if::<CtrlSemiColon>()
+            .ok_or::<String>("statements end in ';'".into())?;
+        Ok(Statement { stmt, span })
+    }
+
+    fn expression(&mut self) -> Expr {
+        self.comparison()
+    }
+
+    fn comparison(&mut self) -> Expr {
+        let mut expr = self.term();
+        // while self.match_on(&[Grt, Les, Geq, Leq, EqEq, Neq]) {
+        fn is_one_of<A, B, C, D, E, F>(stream: &TokenStream) -> bool {
+            stream.peek::<A>() |
+            stream.peek::<B>() |
+            stream.peek::<C>() |
+            stream.peek::<D>() |
+            stream.peek::<E>() |
+            stream.peek::<F>()
+        }
+        while is_one_of::<OpGrt, OpLes, OpGeq, OpLeq, OpEqualEqual, OpNeq>() {
+
+            let op = self.stream.next().unwrap();
+            let right = self.term();
+            expr = Expr::from(ExprBinary::from((expr, right, op)))
+        }
+        expr
+    }
+//
+//     fn term(&mut self) -> Expr {
+//         let mut expr = self.factor();
+//         while self.match_on(&[TokenKind::Plus, TokenKind::Minus]) {
+//             let op = self.stream.next().unwrap();
+//             let right = self.factor();
+//             expr = Expr::from(Binary::from((expr, right, op)))
+//         }
+//         expr
+//     }
+//
+//     fn factor(&mut self) -> Expr {
+//         let mut expr = self.call();
+//         while self.match_on(&[TokenKind::Star, TokenKind::Slash]) {
+//             let op = self.stream.next().unwrap();
+//             let right = self.primary();
+//             expr = Expr::from(Binary::from((expr, right, op)))
+//         }
+//         expr
+//     }
+//
+//     fn call(&mut self) -> Expr {
+//         let mut expr = self.primary();
+//
+//         loop { 
+//             if self.stream.next_if(|i| i.kind() == TokenKind::LParan).is_none() {
+//                 break;
+//             }
+//             expr = self.finish_call(expr);
+//         }
+//
+//         expr
+//     }
+//
+//     fn finish_call(&mut self, caller: Expr) -> Expr {
+//         let start_span = caller.span();
+//         let mut args = vec![];
+//         if !self.match_on(&[TokenKind::RParan]) {
+//             while self
+//                 .stream
+//                 .peek()
+//                 .map(|t| t.kind() != TokenKind::RParan)
+//                 .unwrap_or(false)
+//             {
+//                 args.push(self.expression());
+//                 if self.next_if_kind_is(TokenKind::Comma).is_none() {
+//                     break;
+//                 };
+//             }
+//         }
+//         let end_span = self
+//             .next_if_kind_is(TokenKind::RParan)
+//             .map(|t| t.span())
+//             .unwrap();
+//         let span = Span::new(start_span.line, start_span.start, end_span.end);
+//         Expr::Call(ExprCall {
+//             caller: Box::new(caller),
+//             args,
+//             span,
+//         })
+//     }
+//
+//     fn primary(&mut self) -> Expr {
+//         self.stream
+//             .next()
+//             .and_then(|token| {
+//                 Some(match token.kind() {
+//                     TokenKind::Int => Expr::from(LitInt::from(token)),
+//                     TokenKind::True => Expr::from(LitBool::from(token)),
+//                     TokenKind::False => Expr::from(LitBool::from(token)),
+//                     TokenKind::Id => Expr::from(Var::from(token)),
+//                     t => unimplemented!("{t:?}"),
+//                 })
+//             })
+//             .unwrap()
+//     }
+}

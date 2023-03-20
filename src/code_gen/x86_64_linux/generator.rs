@@ -1,5 +1,5 @@
 use super::{Discripter, Instruction, Mnemonic, Reg64, RegPreserved64, X86Reg};
-use crate::code_gen::ir::{Assignment, BlockType, Input, Label, Op, Reg, Value, Var};
+use crate::code_gen::ir::{IrCopy, Enter, Leave, DefLabel, Jump, Call, Conditional, Assignment, BlockType, Input, Label, Op, Reg, Value, Var};
 use either::Either;
 use std::{collections::HashMap, fmt};
 
@@ -29,34 +29,41 @@ impl AsmGenerator {
     }
 
     fn enter(&mut self) {
-  // ; enter
-  // push rbp
-  // mov rbp, rsp
-  //
-        self.code.push(Instruction::default()
-                  .mnemonic(Mnemonic::Push)
-                  .arg1_reg(RegPreserved64::Rbp));
-        self.code.push(Instruction::default()
-                  .mnemonic(Mnemonic::Move)
-                  .arg1_reg(RegPreserved64::Rbp)
-                  .arg2_reg(RegPreserved64::Rsp));
-
+        // ; enter
+        // push rbp
+        // mov rbp, rsp
+        //
+        self.code.push(
+            Instruction::default()
+                .mnemonic(Mnemonic::Push)
+                .arg1_reg(RegPreserved64::Rbp),
+        );
+        self.code.push(
+            Instruction::default()
+                .mnemonic(Mnemonic::Move)
+                .arg1_reg(RegPreserved64::Rbp)
+                .arg2_reg(RegPreserved64::Rsp),
+        );
     }
 
     fn leave(&mut self) {
-  // ; leave
-  // mov rsp, rbp
-  // pop rbp
-  // ret
-        self.code.push(Instruction::default()
-                  .mnemonic(Mnemonic::Move)
-                  .arg1_reg(RegPreserved64::Rsp)
-                  .arg2_reg(RegPreserved64::Rbp));
-        self.code.push(Instruction::default()
-                  .mnemonic(Mnemonic::Pop)
-                  .arg1_reg(RegPreserved64::Rbp));
-        self.code.push(Instruction::default().mnemonic(Mnemonic::Return));
-
+        // ; leave
+        // mov rsp, rbp
+        // pop rbp
+        // ret
+        self.code.push(
+            Instruction::default()
+                .mnemonic(Mnemonic::Move)
+                .arg1_reg(RegPreserved64::Rsp)
+                .arg2_reg(RegPreserved64::Rbp),
+        );
+        self.code.push(
+            Instruction::default()
+                .mnemonic(Mnemonic::Pop)
+                .arg1_reg(RegPreserved64::Rbp),
+        );
+        self.code
+            .push(Instruction::default().mnemonic(Mnemonic::Return));
     }
 
     fn get_reg(&mut self) -> X86Reg {
@@ -182,29 +189,29 @@ impl AsmGenerator {
         }
     }
 
-    fn visit_label(&mut self, label: &Label) {
-        self.instruction(Instruction::default().label(label.0.clone()));
+    fn visit_label(&mut self, label: &DefLabel) {
+        self.instruction(Instruction::default().label(label.name()));
     }
 
-    fn visit_jump(&mut self, label: &Label) {
+    fn visit_jump(&mut self, jump: &Jump) {
         self.instruction(
             Instruction::default()
                 .mnemonic(Mnemonic::Jump)
-                .arg1_label(label.0.clone()),
+                .arg1_label(jump.name()),
         );
     }
 
     fn visit_assignment(&mut self, block_type: &Assignment) {
-        let Assignment { des, op, x, y } = &block_type;
+        let Assignment { des, op, lhs, rhs } = &block_type;
         let mnemonic = self.visit_op(op);
         let arg1 = self
-            .visit_input(x)
+            .visit_input(lhs)
             .left_and_then(|x| self.mov(x))
             .right_and_then(|x86reg| self.regester_reg(x86reg, des))
             .right()
             .unwrap();
         let arg2 = self
-            .visit_input(y)
+            .visit_input(rhs)
             .left_and_then(|string| Either::<u64, X86Reg>::Left(string.parse::<u64>().unwrap()));
         self.instruction(
             Instruction::default()
@@ -220,18 +227,13 @@ impl AsmGenerator {
         // }));
     }
 
-    // fn visit_proc(&mut self, proc: &Proedure) {
-    //     let Proedure { label, params, ret, body } = proc;
-    //
-    // }
-
     pub fn compile(&mut self, basic_block: &BlockType) {
         match basic_block {
             BlockType::Assignment(assignment) => self.visit_assignment(assignment),
-            BlockType::Copy { .. } => unimplemented!(),
+            BlockType::Copy(..) => unimplemented!(),
             BlockType::Conditional(..) => unimplemented!(),
-            BlockType::Jump(label) => self.visit_jump(label),
-            BlockType::Label(label) => self.visit_label(label),
+            BlockType::Jump(jump) => self.visit_jump(jump),
+            BlockType::Label(def_label) => self.visit_label(def_label),
             BlockType::Call(..) => unimplemented!(),
             BlockType::Enter => self.enter(),
             BlockType::Leave => self.leave(),

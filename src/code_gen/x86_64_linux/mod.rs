@@ -25,7 +25,6 @@ pub fn code_gen(blocks: &[BasicBlock]) -> String {
             asm_generator.comment(comment);
         }
         for b in bb.blocks.iter() {
-
             asm_generator.compile(b)
         }
     }

@@ -1,14 +1,15 @@
 use super::{
-    Binary, Block, Expr, Item, ItemFn, LitBool, LitInt, Name, Param, Statement, Token, TokenKind,
-    Type,
+    keyword, Block, CtrlColon, CtrlComma, CtrlDot, CtrlLBrace, CtrlLBracet, CtrlLParan, CtrlRBrace,
+    CtrlRBracet, CtrlRParan, CtrlRightArrow, CtrlSemiColon, CtrlSlash, CtrlStar,
+    CtrlThickRightArrow, Expr, ExprBinary, ExprCall, ExprLit, ExprVar, Ident, Item, ItemFn, Lit,
+    LitBool, LitChar, LitInt, LitStr, Op, OpAdd, OpDiv, OpEqual, OpEqualEqual, OpGeq, OpGrt, OpLeq,
+    OpLes, OpMul, OpNeq, OpNot, OpSub, Param, Statement, Type,
 };
 
-use crate::lexer::Span;
-use std::iter::Peekable;
-use std::slice::Iter;
+use crate::lexer::{Span, Token, TokenStream};
 
-pub struct Parser<'a> {
-    stream: Peekable<Iter<'a, Token>>,
+pub struct Parser {
+    stream: TokenStream,
     errors: Vec<String>,
 }
 
@@ -22,8 +23,8 @@ pub struct Parser<'a> {
 // unary
 // primary
 
-impl<'a> Parser<'a> {
-    pub fn new(stream: Peekable<Iter<'a, Token>>) -> Self {
+impl Parser {
+    pub fn new(stream: TokenStream) -> Self {
         Self {
             stream,
             errors: vec![],
@@ -45,21 +46,21 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn match_on(&mut self, expected: &[TokenKind]) -> bool {
-        let kind = self
-            .stream
-            .peek()
-            .as_ref()
-            .map(|t| t.kind())
-            .unwrap_or(TokenKind::Eof);
-        for token_kind in expected {
-            if token_kind == &kind {
-                return true;
-            }
-        }
-        false
-    }
-
+    //     fn match_on(&mut self, expected: &[TokenKind]) -> bool {
+    //         let kind = self
+    //             .stream
+    //             .peek()
+    //             .as_ref()
+    //             .map(|t| t.kind())
+    //             .unwrap_or(TokenKind::Eof);
+    //         for token_kind in expected {
+    //             if token_kind == &kind {
+    //                 return true;
+    //             }
+    //         }
+    //         false
+    //     }
+    //
     fn program(&mut self) -> Result<Item, String> {
         self.declaration()
     }
@@ -70,10 +71,15 @@ impl<'a> Parser<'a> {
 
     fn item_fn(&mut self) -> Result<Item, String> {
         let start_span = self
-            .next_if_kind_is(TokenKind::Fn)
+            .stream
+            .next_if::<keyword::Fn>()
             .ok_or::<String>("expected fn".into())?
             .span();
-        let name = self.id()?.into();
+        let name = self
+            .stream
+            .next_if::<Ident>()
+            .ok_or::<String>("expected a ident".into())?
+            .clone();
         let params = self.params()?;
         let ret_type = self.ret_type()?;
         let block = self.block()?;
@@ -88,75 +94,67 @@ impl<'a> Parser<'a> {
         }))
     }
 
-    fn next_if_kind_is(&mut self, tk: TokenKind) -> Option<&Token> {
-        self.stream.next_if(|t| t.kind() == tk)
-    }
-
-    fn id(&mut self) -> Result<&Token, String> {
-        self.next_if_kind_is(TokenKind::Id)
-            .ok_or("expected ID".into())
-    }
-
     fn ret_type(&mut self) -> Result<Option<Type>, String> {
-        let Some(_) = self.next_if_kind_is(TokenKind::RightArrow) else {
+        let Some(_) = self.stream.next_if::<CtrlRightArrow>() else {
             return Ok(None);
         };
-        let Some(t) = self.next_if_kind_is(TokenKind::Id) else {
+        let Some(t) = self.stream.next_if::<Ident>() else {
             return Err("expected return type".into());
         };
         Ok(Some(t.into()))
     }
 
     fn params(&mut self) -> Result<Vec<Param>, String> {
-        self.next_if_kind_is(TokenKind::LParan)
+        self.stream
+            .next_if::<CtrlLParan>()
             .ok_or::<String>("expected '('".into())?;
         let mut params = vec![];
-        while self
-            .stream
-            .peek()
-            .map(|t| t.kind() != TokenKind::RParan)
-            .unwrap_or(false)
-        {
-            let name = match self.stream.next_if(|t| t.kind() == TokenKind::Id) {
-                Some(t) => t,
+        loop {
+            if self.stream.is_peek_a::<CtrlRParan>() {
+                break;
+            }
+            let name = match self.stream.next_if::<Ident>() {
+                Some(t) => t.clone(),
                 None => break,
             };
 
             self.stream
-                .next_if(|t| t.kind() == TokenKind::Colon)
+                .next_if::<CtrlColon>()
                 .ok_or::<String>("expected ':' after function param id".into())?;
 
-            let kind = match self.stream.next_if(|t| t.kind() == TokenKind::Id) {
+            let kind = match self.stream.next_if::<Ident>() {
                 Some(t) => t,
                 None => break,
             };
-            params.push((name, kind).into());
-            if let None = self.stream.next_if(|t| t.kind() == TokenKind::Comma) {
+            params.push((&name, kind).into());
+            if let None = self.stream.next_if::<CtrlComma>() {
                 break;
             }
         }
-        self.next_if_kind_is(TokenKind::RParan)
-            .ok_or::<String>("functions params end with ')'".into())?;
+        if self.stream.next_if::<CtrlRParan>().is_none() {
+            dbg!(&self.stream);
+            return Err("functions params end with ')'".into());
+        }
+        // .ok_or::<String>({
+        //     "functions params end with ')'".into()
+        // })?;
         Ok(params)
     }
 
     fn block(&mut self) -> Result<Block, String> {
         let start_span = self
-            .next_if_kind_is(TokenKind::LBrace)
+            .stream
+            .next_if::<CtrlLBrace>()
             .ok_or::<String>("expected '{'".into())?
             .span();
         let mut stmts = vec![];
-        while self
-            .stream
-            .peek()
-            .map(|t| t.kind() != TokenKind::RBrace)
-            .unwrap_or(false)
-        {
+        while !self.stream.is_peek_a::<CtrlRBrace>() {
             let stmt = self.statement()?;
             stmts.push(stmt);
         }
         let end_span = self
-            .next_if_kind_is(TokenKind::RBrace)
+            .stream
+            .next_if::<CtrlRBrace>()
             .ok_or::<String>("expected '}'".into())?
             .span();
         let span = Span::new(start_span.line, start_span.start, end_span.end);
@@ -166,7 +164,8 @@ impl<'a> Parser<'a> {
     fn statement(&mut self) -> Result<Statement, String> {
         let stmt = self.expression();
         let span = stmt.span();
-        self.next_if_kind_is(TokenKind::SemiColon)
+        self.stream
+            .next_if::<CtrlSemiColon>()
             .ok_or::<String>("statements end in ';'".into())?;
         Ok(Statement { stmt, span })
     }
@@ -176,47 +175,141 @@ impl<'a> Parser<'a> {
     }
 
     fn comparison(&mut self) -> Expr {
-        use TokenKind::{EqEq, Geq, Grt, Leq, Les, Neq};
         let mut expr = self.term();
-        while self.match_on(&[Grt, Les, Geq, Leq, EqEq, Neq]) {
-            let op = self.stream.next().unwrap();
+        // while self.match_on(&[Grt, Les, Geq, Leq, EqEq, Neq]) {
+        fn is_one_of<A, B, C, D, E, F>(stream: &mut TokenStream) -> Option<Op>
+        where
+            A: Token + Clone + Into<Op>,
+            B: Token + Clone + Into<Op>,
+            C: Token + Clone + Into<Op>,
+            D: Token + Clone + Into<Op>,
+            E: Token + Clone + Into<Op>,
+            F: Token + Clone + Into<Op>,
+        {
+            stream
+                .next_if::<A>()
+                .map(|i| (*i).clone().into())
+                .or(stream.next_if::<B>().map(|i| (*i).clone().into()))
+                .or(stream.next_if::<C>().map(|i| (*i).clone().into()))
+                .or(stream.next_if::<D>().map(|i| (*i).clone().into()))
+                .or(stream.next_if::<E>().map(|i| (*i).clone().into()))
+                .or(stream.next_if::<F>().map(|i| (*i).clone().into()))
+        }
+        loop {
+            let op = is_one_of::<OpGrt, OpLes, OpGeq, OpLeq, OpEqualEqual, OpNeq>(&mut self.stream);
+            if op.is_none() {
+                break;
+            }
             let right = self.term();
-            expr = Expr::from(Binary::from((expr, right, op)))
+            expr = Expr::from(ExprBinary::from((expr, right, op.unwrap())))
         }
         expr
     }
 
     fn term(&mut self) -> Expr {
         let mut expr = self.factor();
-        while self.match_on(&[TokenKind::Plus, TokenKind::Minus]) {
-            let op = self.stream.next().unwrap();
+        fn is_one_of<A, B>(stream: &mut TokenStream) -> Option<Op>
+        where
+            A: Token + Clone + Into<Op>,
+            B: Token + Clone + Into<Op>,
+        {
+            stream
+                .next_if::<A>()
+                .map(|i| (*i).clone().into())
+                .or(stream.next_if::<B>().map(|i| (*i).clone().into()))
+        }
+        loop {
+            let op = is_one_of::<OpSub, OpAdd>(&mut self.stream);
+            if op.is_none() {
+                break;
+            }
             let right = self.factor();
-            expr = Expr::from(Binary::from((expr, right, op)))
+            expr = Expr::from(ExprBinary::from((expr, right, op.unwrap())))
         }
         expr
     }
 
     fn factor(&mut self) -> Expr {
-        let mut expr = self.primary();
-        while self.match_on(&[TokenKind::Star, TokenKind::Slash]) {
-            let op = self.stream.next().unwrap();
-            let right = self.primary();
-            expr = Expr::from(Binary::from((expr, right, op)))
+        let mut expr = self.call();
+        fn is_one_of<A, B>(stream: &mut TokenStream) -> Option<Op>
+        where
+            A: Token + Clone + Into<Op>,
+            B: Token + Clone + Into<Op>,
+        {
+            stream
+                .next_if::<A>()
+                .map(|i| (*i).clone().into())
+                .or(stream.next_if::<B>().map(|i| (*i).clone().into()))
+        }
+        loop {
+            let op = is_one_of::<OpMul, OpDiv>(&mut self.stream);
+            if op.is_none() {
+                break;
+            }
+            let right = self.call();
+            expr = Expr::from(ExprBinary::from((expr, right, op.unwrap())))
         }
         expr
     }
 
+    fn call(&mut self) -> Expr {
+        let mut expr = self.primary();
+
+        loop {
+            if self.stream.next_if::<CtrlLParan>().is_none() {
+                break;
+            }
+            expr = self.finish_call(expr);
+        }
+
+        expr
+    }
+
+    fn finish_call(&mut self, caller: Expr) -> Expr {
+        let start_span = caller.span();
+        let mut args = vec![];
+        if !self.stream.is_peek_a::<CtrlRParan>() {
+            while !self.stream.is_peek_a::<CtrlRParan>() {
+                args.push(self.expression());
+                if self.stream.next_if::<CtrlComma>().is_none() {
+                    break;
+                };
+            }
+        }
+        // FIXME: this should be fixed on the unwrap
+        let end_span = self
+            .stream
+            .next_if::<CtrlRParan>()
+            .map(|t| t.span())
+            .unwrap();
+        let span = Span::new(start_span.line, start_span.start, end_span.end);
+        Expr::Call(ExprCall {
+            caller: Box::new(caller),
+            args,
+            span,
+        })
+    }
+
     fn primary(&mut self) -> Expr {
         self.stream
-            .next()
-            .and_then(|token| {
-                Some(match token.kind() {
-                    TokenKind::Int => Expr::from(LitInt::from(token)),
-                    TokenKind::True => Expr::from(LitBool::from(token)),
-                    TokenKind::False => Expr::from(LitBool::from(token)),
-                    t => unimplemented!("{t:?}"),
-                })
-            })
+            .next_if::<LitInt>()
+            .map(|i| Expr::from(i.clone()))
+            .or(self
+                .stream
+                .next_if::<LitBool>()
+                .map(|i| Expr::from(i.clone())))
+            .or(self
+                .stream
+                .next_if::<LitStr>()
+                .map(|i| Expr::from(i.clone())))
+            .or(self
+                .stream
+                .next_if::<LitChar>()
+                .map(|i| Expr::from(i.clone())))
+            .or(self
+                .stream
+                .next_if::<Ident>()
+                .map(|i| Expr::from(i.clone())))
             .unwrap()
     }
 }

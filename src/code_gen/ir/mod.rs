@@ -10,7 +10,9 @@ mod var;
 
 use crate::parse::Item;
 pub use basic_block::BasicBlock;
-pub use block_type::{IrBlock, Conditional, Assignment, BlockType};
+pub use block_type::{
+    Assignment, BlockType, Call, Conditional, DefLabel, Enter, IrCopy, Jump, Leave,
+};
 pub use generator::IrGenerator;
 pub use input::Input;
 pub use label::Label;

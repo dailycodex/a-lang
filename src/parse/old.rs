@@ -153,32 +153,55 @@ impl Lit {
     }
 }
 
-// #[derive(Debug, Clone)]
-// pub struct ExprCall {
-//     pub name: Name,
-//     pub args: Vec<Expr>,
-//     pub span: Span,
-// }
-//
-// impl ExprCall {
-//     pub fn span(&self) -> Span {
-//         self.span
-//     }
-// }
+#[derive(Debug, Clone)]
+pub struct ExprCall {
+    pub caller: Box<Expr>,
+    pub args: Vec<Expr>,
+    pub span: Span,
+}
+
+impl ExprCall {
+    pub fn span(&self) -> Span {
+        self.span
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Var {
+    pub name: Name,
+    pub span: Span,
+}
+
+impl Var {
+    pub fn span(&self) -> Span {
+        self.span
+    }
+}
+
+impl From<&Token> for Var {
+    fn from(value: &Token) -> Self {
+        Self {
+            name: value.into(),
+            span: value.span(),
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub enum Expr {
     Lit(Lit),
     Binary(Binary),
-    // Call(ExprCall),
+    Call(ExprCall),
+    Var(Var),
 }
 
 impl Expr {
     pub fn span(&self) -> Span {
         match self {
-            Self::Lit(lit) => lit.span(),
-            Self::Binary(binary) => binary.span(),
-            // Self::Call(expr_call) => expr_call.span(),
+            Self::Lit(i) => i.span(),
+            Self::Binary(i) => i.span(),
+            Self::Call(i) => i.span(),
+            Self::Var(i) => i.span(),
         }
     }
 }
@@ -198,5 +221,11 @@ impl From<LitInt> for Expr {
 impl From<Binary> for Expr {
     fn from(bin: Binary) -> Self {
         Self::Binary(bin)
+    }
+}
+
+impl From<Var> for Expr {
+    fn from(var: Var) -> Self {
+        Self::Var(var)
     }
 }

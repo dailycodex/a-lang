@@ -1,4 +1,36 @@
 use super::{Span, Token};
+use crate::parse::{
+    keyword,
+    CtrlColon,
+    CtrlComma,
+    CtrlDot,
+    CtrlLBrace,
+    CtrlLBracet,
+    CtrlLParan,
+    CtrlRBrace,
+    CtrlRBracet,
+    CtrlRParan,
+    CtrlRightArrow,
+    // CtrlStar,
+    // CtrlSlash,
+    CtrlSemiColon,
+    Ident,
+    LitChar,
+    LitInt,
+    LitStr,
+    OpAdd,
+    OpDiv,
+    OpEqual,
+    OpEqualEqual,
+    OpGeq,
+    OpGrt,
+    OpLeq,
+    OpLes,
+    OpMul,
+    OpNeq,
+    OpNot,
+    OpSub,
+};
 use std::iter::Peekable;
 use std::str::Chars;
 
@@ -53,120 +85,143 @@ impl<'a> Lexer<'a> {
         span
     }
 
-    fn number(&mut self, c: char) -> Token {
+    fn number(&mut self, c: char) -> Box<dyn Token> {
         let mut number = c.to_string();
         while let Some(c) = self.next_if(|c| c.is_ascii_digit() || c == '_') {
             number.push(c);
         }
-        Token::Int(number, self.span())
+        Box::new(LitInt::new(number, self.span()))
     }
 
-    fn ident(&mut self, c: char) -> Token {
+    fn ident(&mut self, c: char) -> Box<dyn Token> {
         let mut id = c.to_string();
         while let Some(c) = self.next_if(|c| c.is_ascii_alphanumeric() || c == '_') {
             id.push(c);
         }
         let span = self.span();
-        Token::lookup(&id, span).map_or_else(|| Token::Id(id, span), |t| t)
+        match id.as_str() {
+            "fn" => Box::new(keyword::Fn(span)),
+            "struct" => Box::new(keyword::Struct(span)),
+            "if" => Box::new(keyword::If(span)),
+            "else" => Box::new(keyword::Else(span)),
+            "use" => Box::new(keyword::Use(span)),
+            "return" => Box::new(keyword::Return(span)),
+            "let" => Box::new(keyword::Let(span)),
+            "true" => Box::new(keyword::True(span)),
+            "false" => Box::new(keyword::False(span)),
+            _ => Box::new(Ident::new(id, span)),
+        }
     }
 
-    fn string(&mut self) -> Token {
+    fn string(&mut self) -> Box<dyn Token> {
         let mut string = String::new();
         while let Some(c) = self.next_if(|c| c != '"') {
             string.push(c);
         }
         self.next();
-        Token::String(string, self.span())
+        Box::new(LitStr::new(string, self.span()))
     }
 
-    fn chr(&mut self, ch: char) -> Token {
+    fn chr(&mut self, ch: char) -> Box<dyn Token> {
         self.next();
-        Token::Char(ch, self.span())
+        Box::new(LitChar::new(ch, self.span()))
     }
 
-    fn comment(&mut self) -> Token {
+    fn comment(&mut self) -> Box<dyn Token> {
         while let Some(_) = self.next_if(|c| c != '\n') {}
         let ch = self.next();
         self.parse(ch)
     }
 
-    fn op_token(&mut self, op: &str) -> Token {
+    // fn op_token(&mut self, op: &str) -> Box<dyn Token> {
+    //     for _ in 0..op.chars().count().saturating_sub(self.last_chr_len) {
+    //         self.next();
+    //     }
+    //     Token::Op(op.into(), self.span())
+    // }
+    //
+    // fn ctrl_token(&mut self, op: &str) -> Box<dyn Token> {
+    //     for _ in 0..op.chars().count().saturating_sub(self.last_chr_len) {
+    //         self.next();
+    //     }
+    //     Token::Ctrl(op.into(), self.span())
+    // }
+
+    fn token<T>(&mut self, op: &str) -> Box<dyn Token>
+    where
+        T: Token,
+    {
         for _ in 0..op.chars().count().saturating_sub(self.last_chr_len) {
             self.next();
         }
-        Token::Op(op.into(), self.span())
+        Box::new(T::new(op.into(), self.span()))
     }
 
-    fn ctrl_token(&mut self, op: &str) -> Token {
-        for _ in 0..op.chars().count().saturating_sub(self.last_chr_len) {
-            self.next();
-        }
-        Token::Ctrl(op.into(), self.span())
-    }
-
-    fn parse(&mut self, ch: char) -> Token {
+    fn parse(&mut self, ch: char) -> Box<dyn Token> {
         match ch {
             n @ '0'..='9' => self.number(n),
             i @ ('a'..='z' | 'A'..='Z') => self.ident(i),
             '"' => self.string(),
             '\'' => self.chr(ch),
             '/' if self.peek() == '/' => self.comment(),
-            '-' if self.peek() == '>' => self.ctrl_token("->"),
-            '>' if self.peek() == '=' => self.op_token(">="),
-            '>' if self.peek() == '>' => self.op_token(">>"),
-            '<' if self.peek() == '=' => self.op_token("<="),
-            '<' if self.peek() == '<' => self.op_token("<<"),
-            '=' if self.peek() == '=' => self.op_token("=="),
-            '|' if self.peek() == '|' => self.op_token("||"),
-            '&' if self.peek() == '&' => self.op_token("&&"),
-            '!' if self.peek() == '=' => self.op_token("!="),
-            '|' => self.op_token("|"),
-            '&' => self.op_token("&"),
-            '-' => self.op_token("-"),
-            '+' => self.op_token("+"),
-            '*' => self.op_token("*"),
-            '/' => self.op_token("/"),
-            '>' => self.op_token(">"),
-            '<' => self.op_token("<"),
-            '=' => self.op_token("="),
-            '!' => self.op_token("!"),
-            '%' => self.op_token("%"),
-            '.' => self.op_token("."),
-            ',' => self.ctrl_token(","),
-            '(' => self.ctrl_token("("),
-            ')' => self.ctrl_token(")"),
-            '{' => self.ctrl_token("{"),
-            '}' => self.ctrl_token("}"),
-            '[' => self.ctrl_token("{"),
-            ']' => self.ctrl_token("}"),
-            ':' => self.ctrl_token(":"),
-            ';' => self.ctrl_token(";"),
-            'λ' => self.op_token("λ"),
-            '\n' | ' ' => {
+            '-' if self.peek() == '>' => self.token::<CtrlRightArrow>("->"),
+            '>' if self.peek() == '=' => self.token::<OpGeq>(">="),
+            // '>' if self.peek() == '>' => self.token::<Op>(">>"),
+            // '<' if self.peek() == '<' => self.token::<>("<<"),
+            '<' if self.peek() == '=' => self.token::<OpLeq>("<="),
+            '=' if self.peek() == '=' => self.token::<OpEqualEqual>("=="),
+            // '|' if self.peek() == '|' => self.token::<>("||"),
+            // '&' if self.peek() == '&' => self.token::<>("&&"),
+            '!' if self.peek() == '=' => self.token::<OpNeq>("!="),
+            // // '|' => self.op_token("|"),
+            // // '&' => self.op_token("&"),
+            '-' => self.token::<OpSub>("-"),
+            '+' => self.token::<OpAdd>("+"),
+            '*' => self.token::<OpMul>("*"),
+            '/' => self.token::<OpDiv>("/"),
+            '>' => self.token::<OpGrt>(">"),
+            '<' => self.token::<OpLes>("<"),
+            '=' => self.token::<OpEqual>("="),
+            '!' => self.token::<OpNot>("!"),
+            // '%' => self.op_token("%"),
+            '.' => self.token::<CtrlDot>("."),
+            ',' => self.token::<CtrlComma>(","),
+            '(' => self.token::<CtrlLParan>("("),
+            ')' => self.token::<CtrlRParan>(")"),
+            '{' => self.token::<CtrlLBrace>("{"),
+            '}' => self.token::<CtrlRBrace>("}"),
+            '[' => self.token::<CtrlLBracet>("{"),
+            ']' => self.token::<CtrlRBracet>("}"),
+            ':' => self.token::<CtrlColon>(":"),
+            ';' => self.token::<CtrlSemiColon>(";"),
+            // 'λ' => self.op_token("λ"),
+            '\n' | ' ' | '\0' => {
                 let ch = self.next();
                 self.span.start = self.span.end.saturating_sub(self.last_chr_len);
                 self.parse(ch)
             }
-            '\0' => Token::Eof(self.span()),
-            c => Token::Error(format!("unknown char '{}'", c), self.span()),
+            _ => panic!(),
+            // '\0' => Token::Eof(self.span()),
+            // c => Token::Error(format!("unknown char '{}'", c), self.span()),
         }
     }
 
-    pub fn lex(mut self) -> Result<Vec<Token>, Vec<String>> {
+    pub fn lex(mut self) -> Result<Vec<Box<dyn Token>>, Vec<String>> {
         let mut tokens = vec![];
-        let mut errors = vec![];
+        // let mut errors = vec![];
         while !self.is_end() {
             let ch = self.next();
             let token = self.parse(ch);
-            if !token.is_err() {
-                tokens.push(token);
-            } else {
-                errors.push(token.lexme().to_string())
-            }
+            tokens.push(token);
+            // if !token.is_err() {
+            //     tokens.push(token);
+            // } else {
+            //     errors.push(token.lexme().to_string())
+            // }
         }
-        if !errors.is_empty() {
-            return Err(errors);
-        }
+        // if !errors.is_empty() {
+        //     return Err(errors);
+        // }
         Ok(tokens)
     }
 }
