@@ -6,8 +6,10 @@ mod reg64;
 mod reg8;
 mod reg_preserved_64;
 mod x86reg;
+mod mem;
 
-use discripter::Discripter;
+use mem::Mem;
+use discripter::{TableInput, TableOutput};
 use instruction::Instruction;
 use mnemonic::Mnemonic;
 use reg64::Reg64;

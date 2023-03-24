@@ -14,13 +14,7 @@ use super::{
     Var,
 };
 
-use crate::parse::{
-    Binary,
-    Block,
-    Expr,
-    ExprCall,
-    Item, ItemFn, Lit, LitBool, LitInt, Name, Param, Statement,
-};
+use crate::parse::*;
 
 #[derive(Debug, Default)]
 pub struct IrGenerator {
@@ -75,8 +69,8 @@ impl IrGenerator {
         Reg(r)
     }
 
-    fn visit_var(&mut self, var: &ExprVar) -> IrVar {
-        IrVar(var.name.name.to_string())
+    fn visit_var(&mut self, var: &ExprVar) -> Var {
+        Var::from(&var.name)
     }
 
     fn visit_litbool(&mut self, lit_bool: &LitBool) -> Value {
@@ -87,9 +81,9 @@ impl IrGenerator {
         Value(lit_int.value.to_string())
     }
 
-    fn visit_binary(&mut self, binary: &Binary) -> Reg {
+    fn visit_binary(&mut self, binary: &ExprBinary) -> Reg {
         let mut unfold_expr = |expr| match expr {
-            Expr::Lit(ref lit) => self.visit_lit(lit),
+            Expr::Lit(ref lit) => self.visit_expr_lit(lit),
             Expr::Binary(ref binary) => Input::Reg(self.visit_binary(binary)),
             Expr::Call(ref caller) => Input::Reg(self.visit_call(caller)),
             Expr::Var(ref var) => Input::Var(self.visit_var(var)),
@@ -97,16 +91,22 @@ impl IrGenerator {
         let lhs = unfold_expr(Clone::clone(&binary.left));
         let rhs = unfold_expr(Clone::clone(&binary.right));
         let des = self.get_reg();
-        let op = Op::from(binary.op.kind());
+        let op = Op::from(binary.op.clone());
         self.push(Assignment { des, op, lhs, rhs });
         des
     }
 
     fn visit_lit(&mut self, lit: &Lit) -> Input {
         match lit {
-            Lit::Int(int) => Input::Value(self.visit_litint(int)),
-            Lit::Bool(boolean) => Input::Value(self.visit_litbool(boolean)),
+            Lit::Int(ref int) => Input::Value(self.visit_litint(int)),
+            Lit::Bool(ref boolean) => Input::Value(self.visit_litbool(boolean)),
+            Lit::Str(..) => unimplemented!(),
+            Lit::Char(..) => unimplemented!(),
         }
+    }
+
+    fn visit_expr_lit(&mut self, expr_lit: &ExprLit) -> Input {
+        self.visit_lit(&expr_lit.lit)
     }
 
     fn visit_call(&mut self, caller: &ExprCall) -> Reg {
@@ -122,6 +122,9 @@ impl IrGenerator {
             }
             Expr::Call(call) => {
                 self.visit_call(call);
+            }
+            Expr::Var(ref var) => {
+                self.visit_var(var);
             }
         }
     }

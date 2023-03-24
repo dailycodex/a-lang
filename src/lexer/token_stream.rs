@@ -11,6 +11,10 @@ impl TokenStream {
         Self { stream, idx: 0 }
     }
 
+    pub fn is_not_at_end(&self) -> bool {
+        self.idx < self.stream.len()
+    }
+
     pub fn next<'a>(&'a mut self) -> Option<&'a Box<dyn Token>> {
         let result = self.stream.get(self.idx);
         self.idx += 1;

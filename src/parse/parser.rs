@@ -31,19 +31,22 @@ impl Parser {
         }
     }
 
-    pub fn parse(mut self) -> Result<Item, Vec<String>> {
-        match self.program() {
-            Ok(item) => {
-                if !self.errors.is_empty() {
-                    return Err(self.errors);
+    pub fn parse(mut self) -> Result<Vec<Item>, Vec<String>> {
+        let mut ast = vec![];
+        while self.stream.is_not_at_end() {
+            match self.program() {
+                Ok(item) => {
+                    ast.push(item);
                 }
-                Ok(item)
-            }
-            Err(error) => {
-                self.errors.push(error);
-                Err(self.errors)
+                Err(error) => {
+                    self.errors.push(error);
+                }
             }
         }
+        if !self.errors.is_empty() {
+            return Err(self.errors);
+        }
+        Ok(ast)
     }
 
     //     fn match_on(&mut self, expected: &[TokenKind]) -> bool {

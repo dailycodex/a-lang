@@ -1,5 +1,6 @@
 use crate::lexer::Span;
 use crate::{from_token, token};
+use std::str::FromStr;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Lit {
@@ -30,8 +31,14 @@ from_token!(Lit, Bool, LitBool);
 from_token!(Lit, Str, LitStr);
 from_token!(Lit, Char, LitChar);
 
-// impl LitInt {
-//     pub fn _parse<T: FromStr>(&self) -> Result<T, <T as FromStr>::Err> {
-//         self.value.parse::<T>()
-//     }
-// }
+impl LitInt {
+    pub fn parse<T: FromStr>(&self) -> Result<T, <T as FromStr>::Err> {
+        self.value.parse::<T>()
+    }
+}
+
+impl LitBool {
+    pub fn parse<T: FromStr>(&self) -> Result<T, <T as FromStr>::Err> {
+        self.value.parse::<T>()
+    }
+}

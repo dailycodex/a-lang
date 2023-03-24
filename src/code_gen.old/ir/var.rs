@@ -1,16 +1,16 @@
-use crate::parse::{Name, Param};
+use crate::parse::{Ident, Param};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Var(pub String);
 
-impl From<&Name> for Var {
-    fn from(value: &Name) -> Self {
-        Self(value.name.clone())
+impl From<&Ident> for Var {
+    fn from(value: &Ident) -> Self {
+        Self(value.value.clone())
     }
 }
 
 impl From<&Param> for Var {
     fn from(value: &Param) -> Self {
-        Self(value.name.clone())
+        Self::from(&value.name)
     }
 }

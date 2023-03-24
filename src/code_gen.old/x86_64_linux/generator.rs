@@ -1,4 +1,4 @@
-use super::{Discripter, Instruction, Mnemonic, Reg64, RegPreserved64, X86Reg};
+use super::{Mem, TableInput, TableOutput, Instruction, Mnemonic, Reg64, RegPreserved64, X86Reg};
 use crate::code_gen::ir::{IrCopy, Enter, Leave, DefLabel, Jump, Call, Conditional, Assignment, BlockType, Input, Label, Op, Reg, Value, Var};
 use either::Either;
 use std::{collections::HashMap, fmt};
@@ -6,7 +6,7 @@ use std::{collections::HashMap, fmt};
 #[derive(Debug, Default)]
 pub struct AsmGenerator {
     regs: [bool; 9],
-    discripter: HashMap<Discripter, X86Reg>,
+    table: HashMap<TableInput, TableOutput>,
     code: Vec<Instruction>,
 }
 
@@ -16,7 +16,7 @@ impl AsmGenerator {
     }
 
     pub fn return_last_reg_in_exit(&mut self) {
-        if let Some((_, xreg)) = self.discripter.iter().max() {
+        if let Some((_, xreg)) = self.table.iter().max() {
             if *xreg != X86Reg::Reg64(Reg64::Rdi) {
                 self.code.push(
                     Instruction::default()
@@ -98,17 +98,18 @@ impl AsmGenerator {
     }
 
     fn regester_reg(&mut self, xreg: X86Reg, reg: &Reg) -> Either<u64, X86Reg> {
-        self.discripter.insert((*reg).into(), xreg);
+        self.table.insert((*reg).into(), xreg);
         Either::Right(xreg)
     }
 
     fn release_reg(&mut self, name: X86Reg) {
         let idx = name.as_usize();
         self.regs[idx] = false;
-        self.discripter.remove(&name.into());
+        self.table.remove(&name.into());
     }
 
-    fn mov(&mut self, value: String) -> Either<u64, X86Reg> {
+    fn mov(&mut self, value: impl Into<String>) -> Either<u64, X86Reg> {
+        let value = value.into();
         let des = self.get_reg();
         let num = value.parse::<u64>().unwrap();
         self.code.push(
@@ -164,12 +165,24 @@ impl AsmGenerator {
         }
     }
 
+    fn visit_mem(&mut self, mem: &Mem) -> String {
+        todo!()
+    }
+
     fn visit_reg(&mut self, reg: &Reg) -> X86Reg {
-        self.discripter.get(&reg.into()).cloned().unwrap_or({
+        let table_output = self.table.get(&reg.into()).cloned().unwrap_or({
             let xreg = self.get_reg();
             self.regester_reg(xreg, reg);
-            xreg
-        })
+            TableOutput::Reg(xreg)
+        });
+        match table_output {
+            TableOutput::Reg(reg) => reg,
+            TableOutput::Var(ref var) => match self.visit_var(var) {
+                Either::Left(..) => unimplemented!(),
+                Either::Right(right) => right,
+            },
+            TableOutput::Mem(ref mem) => self.mov(mem.to_string()).right().unwrap(),
+        }
     }
 
     fn visit_value(&mut self, value: &Value) -> String {
@@ -177,8 +190,13 @@ impl AsmGenerator {
         value.to_string()
     }
 
-    fn visit_var(&mut self, _var: &Var) -> Either<String, X86Reg> {
-        todo!()
+    fn visit_var(&mut self, var: &Var) -> Either<String, X86Reg> {
+        match self.table.get(&(*var).into()) {
+            Some(TableOutput::Var(ref var)) => self.visit_var(var),
+            Some(TableOutput::Reg(reg)) => Either::Right(reg.clone()),
+            Some(TableOutput::Mem(ref mem)) => Either::Left(self.visit_mem(mem)),
+            None => panic!("{:?} does not exists in the look up table", var)
+        }
     }
 
     fn visit_input(&mut self, input: &Input) -> Either<String, X86Reg> {
