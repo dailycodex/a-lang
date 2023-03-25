@@ -1,3 +1,4 @@
+#![allow(unused)]
 use super::Span;
 use std::any::Any;
 use std::fmt::Debug;

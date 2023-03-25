@@ -1,10 +1,18 @@
+#![allow(unused)]
 mod instruction;
 use std::collections::HashMap;
 
 pub use instruction::*;
 
 use crate::lexer::*;
-use crate::parse::*;
+
+use crate::parse::{
+    Block, CtrlColon, CtrlComma, CtrlDot, CtrlLBrace, CtrlLBracet, CtrlLParan, CtrlRBrace,
+    CtrlRBracet, CtrlRParan, CtrlRightArrow, CtrlSemiColon, CtrlSlash, CtrlStar,
+    CtrlThickRightArrow, Expr, ExprBinary, ExprCall, ExprLit, ExprVar, Ident, Item, ItemFn, Lit,
+    LitBool, LitChar, LitInt, LitStr, Op, OpAdd, OpDiv, OpEqual, OpEqualEqual, OpGeq, OpGrt, OpLeq,
+    OpLes, OpMul, OpNeq, OpNot, OpSub, Param, Statement, Type as PType,
+};
 
 pub fn code_gen(ast: Vec<Item>) -> Result<Vec<Instruction>, Vec<String>> {
     let mut gen = IrGenerator::default();
@@ -27,15 +35,6 @@ pub struct Reg(pub usize);
 #[derive(Debug, Hash, Clone, PartialEq, Eq)]
 pub struct Var(pub String);
 
-// #[derive(Debug, Clone, PartialEq, Eq)]
-// pub struct Mem;
-//
-// impl From<Mem> for Either<Imm, Mem> {
-//     fn from(value: Mem) -> Self {
-//         Self::Right(value)
-//     }
-// }
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Imm(pub u64);
 impl From<u64> for Imm {
@@ -44,21 +43,16 @@ impl From<u64> for Imm {
     }
 }
 
-// impl From<Imm> for Either<Imm, Mem> {
-//     fn from(value: Imm) -> Self {
-//         Self::Left(value)
-//     }
-// }
-
 trait Ir {
     fn load_imm(&mut self, imm: Imm) -> Reg;
-    fn load_var(&mut self, var: Var) -> Reg;
     fn binary(&mut self, op: &Op, lhs: Reg, rhs: Reg) -> Reg;
     fn call(&mut self, label: Label, args: Vec<Reg>, ret: Reg) -> Reg;
 }
 
 trait AstVisitor: Ir {
     fn visit_expr_var(&mut self, expr_var: &ExprVar) -> Reg;
+    // FIXME: Not really what i wanted to do.
+    fn visit_params(&mut self, expr: &Param) -> Reg;
     fn visit_expr_call(&mut self, expr_call: &ExprCall) -> Reg;
     fn visit_expr_binary(&mut self, bin: &ExprBinary) -> Reg;
     fn visit_item_fn(&mut self, item_fn: &ItemFn);
@@ -112,16 +106,17 @@ trait AstVisitor: Ir {
 #[derive(Debug, Default)]
 struct IrGenerator {
     code: Vec<Instruction>,
+    block: Vec<Instruction>,
     reg_counter: usize,
-    discriper: HashMap<Var, Reg>,
+    vars: HashMap<String, Reg>,
 }
 
 impl IrGenerator {
-    fn store_var(&mut self, var: Var, reg: Reg) {
-        self.discriper.insert(var, reg);
+    fn push_to_block(&mut self, ir: impl Into<Instruction>) {
+        self.block.push(ir.into());
     }
 
-    fn push(&mut self, ir: impl Into<Instruction>) {
+    fn push_fn(&mut self, ir: impl Into<Instruction>) {
         self.code.push(ir.into());
     }
 
@@ -140,13 +135,7 @@ impl Ir for IrGenerator {
     fn load_imm(&mut self, imm: Imm) -> Reg {
         let des = self.get_reg();
         let load = LoadImm { des, imm };
-        self.push(load);
-        des
-    }
-    fn load_var(&mut self, var: Var) -> Reg {
-        let des = self.get_reg();
-        let load = LoadVar { des, var };
-        self.push(load);
+        self.push_to_block(load);
         des
     }
     fn binary(&mut self, op: &Op, lhs: Reg, rhs: Reg) -> Reg {
@@ -159,20 +148,27 @@ impl Ir for IrGenerator {
             Op::Div(_) => Div { des, lhs, rhs }.into(),
             _ => unimplemented!(),
         };
-        self.push(instruction);
+        self.push_to_block(instruction);
         des
     }
     fn call(&mut self, caller: Label, args: Vec<Reg>, ret: Reg) -> Reg {
         let instruction: Instruction = Call { caller, args, ret }.into();
-        self.push(instruction);
+        self.push_to_block(instruction);
         ret
     }
 }
 
 impl AstVisitor for IrGenerator {
+    fn visit_params(&mut self, params: &Param) -> Reg {
+        let Param { name, .. } = params;
+        let des = self.get_reg();
+        self.vars.insert(name.value(), des);
+        des
+    }
+
     fn visit_expr_var(&mut self, expr_var: &ExprVar) -> Reg {
-        let name = expr_var.name.value();
-        self.load_var(Var(name))
+        let ExprVar { name, .. } = expr_var;
+        *self.vars.get(&name.value()).unwrap()
     }
 
     fn visit_lit_int(&mut self, lit_int: &LitInt) -> Reg {
@@ -217,19 +213,24 @@ impl AstVisitor for IrGenerator {
             ret_type,
             ..
         } = item_fn;
-        let vars = params
-            .iter()
-            .map(|p| Var(p.name.value()))
-            .collect::<Vec<Var>>();
-        for var in vars {
-            let reg = self.get_reg();
-            self.store_var(var, reg);
-        }
+
         self.reset_regester_count();
-        self.push(DefLabel { label: name.into() });
-        self.push(Enter);
+        let params = params
+            .iter()
+            .map(|p| (self.visit_params(p), Type::I64))
+            .collect();
+
+        self.push_to_block(Enter);
         self.visit_block(&block);
-        self.push(Leave);
+        self.push_to_block(Leave);
+        let body = self.block.clone();
+        self.block.clear();
+        self.push_fn(DefFunc {
+            name: name.value(),
+            params,
+            ret: Type::I64,
+            body,
+        });
     }
 }
 
@@ -249,7 +250,7 @@ mod tests {
     }
 
     macro_rules! test_builder {
-        ($name:ident, $input:expr $(, $t:expr)* $(,)? ) => {
+        (test_name: $name:ident, input: $input:expr, ir: $($t:expr, )* $(,)? ) => {
             #[test]
             fn $name() {
                 let left = setup($input);
@@ -263,65 +264,93 @@ mod tests {
     }
 
     test_builder! {
-        test_binary_mul,
-        "fn main() { 1+2*3; }",
-        DefLabel {label: Label("main".into()).into()}.into(),
-        Enter.into(),
-        LoadImm{des: Reg(0), imm: Imm(1) }.into(),
-        LoadImm{des: Reg(1), imm: Imm(2) }.into(),
-        LoadImm{des: Reg(2), imm: Imm(3) }.into(),
-        Mul {
-            des: Reg(3),
-            lhs: Reg(1),
-            rhs: Reg(2),
+        test_name: test_binary_mul,
+        input: "fn main() { 1+2*3; }",
+        ir: DefFunc{
+            name: "main".into(),
+            ret: Type::I64,
+            params: vec![],
+            body: vec![
+                Enter.into(),
+                LoadImm{des: Reg(0), imm: Imm(1) }.into(),
+                LoadImm{des: Reg(1), imm: Imm(2) }.into(),
+                LoadImm{des: Reg(2), imm: Imm(3) }.into(),
+                Mul {
+                    des: Reg(3),
+                    lhs: Reg(1),
+                    rhs: Reg(2),
+                }.into(),
+                Add {
+                    des: Reg(4),
+                    lhs: Reg(0),
+                    rhs: Reg(3),
+                }.into(),
+                Leave.into(),
+            ],
+
         }.into(),
-        Add {
-            des: Reg(4),
-            lhs: Reg(0),
-            rhs: Reg(3),
-        }.into(),
-        Leave.into()
     }
 
     test_builder! {
-        test_ir_gen,
-        "fn main() { 1 + 2; }",
-        DefLabel{label:Label("main".into())}.into(),
-        Enter.into(),
-        LoadImm{des: Reg(0), imm: Imm(1) }.into(),
-        LoadImm{des: Reg(1), imm: Imm(2) }.into(),
-        Add {
-            des: Reg(2),
-            lhs: Reg(0),
-            rhs: Reg(1),
+        test_name: test_ir_gen,
+        input: "fn main() { 1 + 2; }",
+        ir: DefFunc{
+            name: "main".into(),
+            ret: Type::I64,
+            params: vec![],
+            body: vec![
+                Enter.into(),
+                LoadImm{des: Reg(0), imm: Imm(1) }.into(),
+                LoadImm{des: Reg(1), imm: Imm(2) }.into(),
+                Add {
+                    des: Reg(2),
+                    lhs: Reg(0),
+                    rhs: Reg(1),
+                }.into(),
+                Leave.into(),
+            ],
+
         }.into(),
-        Leave.into(),
     }
 
     test_builder! {
-        test_ir_gen_calling,
-        "fn add(x: u64, y: u64) -> u64 { x + y; } fn main() { add(1, 2); }",
-        DefLabel{label:Label("add".into())}.into(),
-        Enter.into(),
-        LoadVar{des: Reg(0), var: Var("x".into())}.into(),
-        LoadVar{des: Reg(1), var: Var("y".into())}.into(),
-        Add {
-            des: Reg(2),
-            lhs: Reg(0),
-            rhs: Reg(1),
-        }.into(),
-        Leave.into(),
+        test_name: test_ir_gen_calling,
+        input: "fn add(x: u64, y: u64) -> u64 { x + y; } fn main() { add(1, 2); }",
+        ir: DefFunc{
+            name: "add".into(),
+            ret: Type::I64,
+            params: vec![
+                (Reg(0), Type::I64),
+                (Reg(1), Type::I64),
+            ],
+            body: vec![
+                Enter.into(),
+                Add {
+                    des: Reg(2),
+                    lhs: Reg(0),
+                    rhs: Reg(1),
+                }.into(),
+                Leave.into(),
+            ],
 
-        DefLabel{label:Label("main".into())}.into(),
-        Enter.into(),
-        LoadImm{des: Reg(0), imm: Imm(1) }.into(),
-        LoadImm{des: Reg(1), imm: Imm(2) }.into(),
-        Call {
-            caller: Label("add".into()),
-            args: vec![Reg(0), Reg(1)],
-            ret: Reg(1000),
         }.into(),
-        Leave.into(),
+        DefFunc{
+            name: "main".into(),
+            ret: Type::I64,
+            params: vec![],
+            body: vec![
+                Enter.into(),
+                LoadImm { des: Reg(0), imm: Imm(1) }.into(),
+                LoadImm { des: Reg(1), imm: Imm(2) }.into(),
+                Call {
+                    caller: Label("add".into()),
+                    args: vec![Reg(0), Reg(1)],
+                    ret: Reg(1000),
+                }.into(),
+                Leave.into(),
+            ],
+
+        }.into(),
     }
 }
 

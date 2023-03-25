@@ -1,9 +1,15 @@
+#![allow(unused)]
 use super::{Imm, Label, Reg, Var};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Type {
+    I64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Instruction {
+    DefFunc(DefFunc),
     LoadImm(LoadImm),
-    LoadVar(LoadVar),
     Add(Add),
     Sub(Sub),
     Mul(Mul),
@@ -43,8 +49,8 @@ macro_rules! from_to {
     };
 }
 
+from_to!(DefFunc, Instruction);
 from_to!(LoadImm, Instruction);
-from_to!(LoadVar, Instruction);
 from_to!(Copy, Instruction);
 from_to!(Conditional, Instruction);
 from_to!(Jump, Instruction);
@@ -75,15 +81,17 @@ op_instruction!(Mul);
 op_instruction!(Div);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct LoadImm {
-    pub des: Reg,
-    pub imm: Imm,
+pub struct DefFunc {
+    pub name: String,
+    pub ret: Type,
+    pub params: Vec<(Reg, Type)>,
+    pub body: Vec<Instruction>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct LoadVar {
+pub struct LoadImm {
     pub des: Reg,
-    pub var: Var,
+    pub imm: Imm,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

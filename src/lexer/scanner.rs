@@ -1,3 +1,4 @@
+#![allow(unused)]
 use super::{Span, Token};
 use crate::parse::{
     keyword,

@@ -10,6 +10,6 @@ pub use token::Token;
 pub use token_stream::TokenStream;
 // pub use tokenkind::TokenKind;
 
-pub fn lex(src: &str) -> Result<TokenStream, Vec<String>> {
-    Lexer::new(src).lex().map(TokenStream::new)
+pub fn lex(src: impl Into<String>) -> Result<TokenStream, Vec<String>> {
+    Lexer::new(src.into().as_str()).lex().map(TokenStream::new)
 }
