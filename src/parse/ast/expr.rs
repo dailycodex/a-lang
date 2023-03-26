@@ -1,5 +1,6 @@
 use super::{Ident, Lit, Op};
 use crate::lexer::{Span, Token};
+use std::fmt;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Expr {
@@ -8,6 +9,17 @@ pub enum Expr {
     Binary(ExprBinary),
     Call(ExprCall),
     Var(ExprVar),
+}
+
+impl fmt::Display for Expr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Lit(elit) => write!(f, "{elit}"),
+            Self::Binary(ebin) => write!(f, "{ebin}"),
+            Self::Call(ecall) => write!(f, "{ecall}"),
+            Self::Var(evar) => write!(f, "{evar}"),
+        }
+    }
 }
 
 impl Expr {
@@ -89,6 +101,13 @@ pub struct ExprLit {
     pub lit: Lit,
 }
 
+impl fmt::Display for ExprLit {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self { lit } = &self;
+        write!(f, "{lit}")
+    }
+}
+
 impl From<Lit> for ExprLit {
     fn from(lit: Lit) -> Self {
         Self { lit }
@@ -106,6 +125,13 @@ pub struct ExprBinary {
     pub left: Box<Expr>,
     pub right: Box<Expr>,
     pub op: Op,
+}
+
+impl fmt::Display for ExprBinary {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self { left, right, op } = &self;
+        write!(f, "({op} {left} {right})")
+    }
 }
 
 impl ExprBinary {
@@ -133,6 +159,14 @@ pub struct ExprCall {
     pub span: Span,
 }
 
+impl fmt::Display for ExprCall {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self { caller, args, .. } = &self;
+        let args = args.iter().map(ToString::to_string).collect::<String>();
+        write!(f, "({caller} {args})")
+    }
+}
+
 impl ExprCall {
     pub fn span(&self) -> Span {
         self.span
@@ -143,6 +177,13 @@ impl ExprCall {
 pub struct ExprVar {
     pub name: Ident,
     pub span: Span,
+}
+
+impl fmt::Display for ExprVar {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self { name, .. } = &self;
+        write!(f, "{name}")
+    }
 }
 
 impl ExprVar {

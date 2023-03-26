@@ -70,10 +70,9 @@ impl TokenStream {
     where
         Expected: Token,
     {
-        self.stream.get(self.idx).and_then(|i| {
-            dbg!(i);
-            i.as_any().downcast_ref::<Expected>()
-        })
+        self.stream
+            .get(self.idx)
+            .and_then(|i| i.as_any().downcast_ref::<Expected>())
     }
 
     pub fn peek_nth<'a, Expected>(&'a self, nth: usize) -> Option<&'a Expected>

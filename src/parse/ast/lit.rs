@@ -1,5 +1,6 @@
 use crate::lexer::Span;
 use crate::{from_token, token};
+use std::fmt;
 use std::str::FromStr;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -8,6 +9,17 @@ pub enum Lit {
     Bool(LitBool),
     Str(LitStr),
     Char(LitChar),
+}
+
+impl fmt::Display for Lit {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Int(i) => write!(f, "{i}"),
+            Self::Bool(i) => write!(f, "{i}"),
+            Self::Str(i) => write!(f, "{i}"),
+            Self::Char(i) => write!(f, "{i}"),
+        }
+    }
 }
 
 impl Lit {

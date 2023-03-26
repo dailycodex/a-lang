@@ -38,18 +38,16 @@ impl RegState {
     }
 
     pub fn get_reg(&mut self, reg: &Reg) -> X86Reg {
-        self.in_use
-            .get(reg)
-            .copied()
-            .unwrap_or_else(|| {
-                let xreg = self.get_param_reg(reg);
-                self.push_reg(reg, xreg);
-                xreg
-            })
+        self.in_use.get(reg).copied().unwrap_or_else(|| {
+            let xreg = self.get_param_reg(reg);
+            self.push_reg(reg, xreg);
+            xreg
+        })
     }
 
     pub fn get_param_reg(&mut self, reg: &Reg) -> X86Reg {
-        let xreg = self.args
+        let xreg = self
+            .args
             .iter_mut()
             .enumerate()
             .find(|(_, r)| !**r)
@@ -82,7 +80,8 @@ impl RegState {
             .and_then(|(i, r)| {
                 *r = true;
                 Some(X86RegRet::from(i).into())
-            }).unwrap()
+            })
+            .unwrap()
     }
 
     pub fn last_used_reg(&self) -> X86Reg {

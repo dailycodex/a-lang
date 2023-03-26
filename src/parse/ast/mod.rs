@@ -40,6 +40,11 @@ macro_rules! token {
                 self
             }
         }
+        impl std::fmt::Display for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "{}", self.value)
+            }
+        }
     };
 }
 
@@ -90,6 +95,25 @@ pub enum Op {
     EqualEqual(OpEqualEqual),
 }
 
+impl std::fmt::Display for Op {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Add(op) => write!(f, "{op}"),
+            Self::Sub(op) => write!(f, "{op}"),
+            Self::Mul(op) => write!(f, "{op}"),
+            Self::Div(op) => write!(f, "{op}"),
+            Self::Grt(op) => write!(f, "{op}"),
+            Self::Les(op) => write!(f, "{op}"),
+            Self::Geq(op) => write!(f, "{op}"),
+            Self::Leq(op) => write!(f, "{op}"),
+            Self::Neq(op) => write!(f, "{op}"),
+            Self::Not(op) => write!(f, "{op}"),
+            Self::Equal(op) => write!(f, "{op}"),
+            Self::EqualEqual(op) => write!(f, "{op}"),
+        }
+    }
+}
+
 from_token!(Op, Add, OpAdd);
 from_token!(Op, Sub, OpSub);
 from_token!(Op, Mul, OpMul);
@@ -136,6 +160,27 @@ pub enum Ctrl {
     ThickRightArrow(CtrlThickRightArrow), // =>
 }
 
+impl std::fmt::Display for Ctrl {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Star(ctrl) => write!(f, "{ctrl}"),
+            Self::Slash(ctrl) => write!(f, "{ctrl}"),
+            Self::SemiColon(ctrl) => write!(f, "{ctrl}"),
+            Self::Colon(ctrl) => write!(f, "{ctrl}"),
+            Self::Comma(ctrl) => write!(f, "{ctrl}"),
+            Self::Dot(ctrl) => write!(f, "{ctrl}"),
+            Self::LBrace(ctrl) => write!(f, "{ctrl}"),
+            Self::RBrace(ctrl) => write!(f, "{ctrl}"),
+            Self::LBracet(ctrl) => write!(f, "{ctrl}"),
+            Self::RBracet(ctrl) => write!(f, "{ctrl}"),
+            Self::LParan(ctrl) => write!(f, "{ctrl}"),
+            Self::RParan(ctrl) => write!(f, "{ctrl}"),
+            Self::RightArrow(ctrl) => write!(f, "{ctrl}"),
+            Self::ThickRightArrow(ctrl) => write!(f, "{ctrl}"),
+        }
+    }
+}
+
 from_token!(Ctrl, Star, CtrlStar);
 from_token!(Ctrl, Slash, CtrlSlash);
 from_token!(Ctrl, SemiColon, CtrlSemiColon);
@@ -156,6 +201,16 @@ pub struct Block {
     pub stmts: Vec<Statement>,
     pub span: Span,
 }
+impl std::fmt::Display for Block {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self { stmts, .. } = &self;
+        let stmts = stmts
+            .iter()
+            .map(|stmt| format!("{stmt}\n"))
+            .collect::<String>();
+        write!(f, "{stmts}")
+    }
+}
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Statement {
@@ -163,8 +218,21 @@ pub struct Statement {
     pub span: Span,
 }
 
+impl std::fmt::Display for Statement {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self { stmt, .. } = &self;
+        write!(f, "({stmt})")
+    }
+}
+
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Type(pub Ident);
+impl std::fmt::Display for Type {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self(ident) = &self;
+        write!(f, "({ident})")
+    }
+}
 
 impl From<&Ident> for Type {
     fn from(value: &Ident) -> Self {
@@ -177,6 +245,13 @@ pub struct Param {
     pub name: Ident,
     pub kind: Type,
     pub span: Span,
+}
+
+impl std::fmt::Display for Param {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self { name, kind, .. } = &self;
+        write!(f, "({name}: {kind})")
+    }
 }
 
 impl From<(&Ident, &Ident)> for Param {

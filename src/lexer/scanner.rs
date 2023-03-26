@@ -16,6 +16,7 @@ use crate::parse::{
     // CtrlSlash,
     CtrlSemiColon,
     Ident,
+    LitBool,
     LitChar,
     LitInt,
     LitStr,
@@ -56,8 +57,9 @@ impl<'a> Lexer<'a> {
         self.span.end
     }
 
-    fn is_end(&self) -> bool {
-        self.tp() >= self.len.saturating_sub(1)
+    fn is_end(&mut self) -> bool {
+        self.src.peek().is_none()
+        // self.tp() >= self.len.saturating_sub(1)
     }
 
     fn peek(&mut self) -> char {
@@ -108,8 +110,8 @@ impl<'a> Lexer<'a> {
             "use" => Box::new(keyword::Use(span)),
             "return" => Box::new(keyword::Return(span)),
             "let" => Box::new(keyword::Let(span)),
-            "true" => Box::new(keyword::True(span)),
-            "false" => Box::new(keyword::False(span)),
+            "true" => Box::new(LitBool::new(id, span)),
+            "false" => Box::new(LitBool::new(id, span)),
             _ => Box::new(Ident::new(id, span)),
         }
     }
@@ -123,9 +125,14 @@ impl<'a> Lexer<'a> {
         Box::new(LitStr::new(string, self.span()))
     }
 
-    fn chr(&mut self, ch: char) -> Box<dyn Token> {
+    fn chr(&mut self) -> Box<dyn Token> {
+        let mut string = String::new();
+        while let Some(c) = self.next_if(|c| c != '\'') {
+            string.push(c);
+        }
         self.next();
-        Box::new(LitChar::new(ch, self.span()))
+
+        Box::new(LitChar::new(string, self.span()))
     }
 
     fn comment(&mut self) -> Box<dyn Token> {
@@ -133,20 +140,6 @@ impl<'a> Lexer<'a> {
         let ch = self.next();
         self.parse(ch)
     }
-
-    // fn op_token(&mut self, op: &str) -> Box<dyn Token> {
-    //     for _ in 0..op.chars().count().saturating_sub(self.last_chr_len) {
-    //         self.next();
-    //     }
-    //     Token::Op(op.into(), self.span())
-    // }
-    //
-    // fn ctrl_token(&mut self, op: &str) -> Box<dyn Token> {
-    //     for _ in 0..op.chars().count().saturating_sub(self.last_chr_len) {
-    //         self.next();
-    //     }
-    //     Token::Ctrl(op.into(), self.span())
-    // }
 
     fn token<T>(&mut self, op: &str) -> Box<dyn Token>
     where
@@ -163,12 +156,10 @@ impl<'a> Lexer<'a> {
             n @ '0'..='9' => self.number(n),
             i @ ('a'..='z' | 'A'..='Z') => self.ident(i),
             '"' => self.string(),
-            '\'' => self.chr(ch),
+            '\'' => self.chr(),
             '/' if self.peek() == '/' => self.comment(),
             '-' if self.peek() == '>' => self.token::<CtrlRightArrow>("->"),
             '>' if self.peek() == '=' => self.token::<OpGeq>(">="),
-            // '>' if self.peek() == '>' => self.token::<Op>(">>"),
-            // '<' if self.peek() == '<' => self.token::<>("<<"),
             '<' if self.peek() == '=' => self.token::<OpLeq>("<="),
             '=' if self.peek() == '=' => self.token::<OpEqualEqual>("=="),
             // '|' if self.peek() == '|' => self.token::<>("||"),

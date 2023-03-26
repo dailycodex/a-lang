@@ -1,16 +1,16 @@
 #![allow(unused)]
 mod reg_state;
-mod x86reg;
+pub mod x86reg;
 use reg_state::RegState;
-use std::fmt;
-use x86reg::*;
+pub use std::fmt;
+pub use x86reg::*;
 
 use crate::ir;
-pub fn code_gen(ir: Vec<ir::Instruction>) -> Result<String, Vec<String>> {
-    compile_ir_code(ir).and_then(instruction_to_string)
-}
+// pub fn code_gen(ir: Vec<ir::Instruction>) -> Result<String, Vec<String>> {
+//     compile_ir_code(ir).and_then(instruction_to_string)
+// }
 
-fn compile_ir_code(ir: Vec<ir::Instruction>) -> Result<Vec<Instruction>, Vec<String>> {
+pub fn compile_ir_code(ir: Vec<ir::Instruction>) -> Result<Vec<Instruction>, Vec<String>> {
     let mut state = RegState::default();
     Ok(ir
         .iter()
@@ -21,7 +21,7 @@ fn compile_ir_code(ir: Vec<ir::Instruction>) -> Result<Vec<Instruction>, Vec<Str
         .collect::<Vec<Instruction>>())
 }
 
-fn instruction_to_string(ir: Vec<Instruction>) -> Result<String, Vec<String>> {
+pub fn instruction_to_string(ir: Vec<Instruction>) -> Result<String, Vec<String>> {
     Ok(ir.iter().map(ToString::to_string).collect())
 }
 
@@ -30,7 +30,7 @@ trait Compile {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-enum Instruction {
+pub enum Instruction {
     MoveImm(X86Reg, u64),
     MoveReg(X86Reg, X86Reg),
     Add(X86Reg, X86Reg),
@@ -57,7 +57,7 @@ impl fmt::Display for Instruction {
             Self::Call(name) => write!(f, "  call __{}__\n", name),
             Self::Jump(name) => write!(f, "  jmp __{}__\n", name),
             Self::ProLog => write!(f, "  push rbp\n  mov  rbp,    rsp\n"),
-            Self::Epilog => write!(f, "  mov  rsp, rbp\n  pop    rbp\n  ret\n"),
+            Self::Epilog => write!(f, "  mov  rsp,    rbp\n  pop  rbp\n  ret\n"),
         }
     }
 }
@@ -112,7 +112,7 @@ impl Compile for ir::DefFunc {
         let ret_reg = state.get_ret_reg();
         let last_reg = state.last_used_reg();
         let instruction = Instruction::MoveReg(ret_reg, last_reg);
-        result.insert(result.len().saturating_sub(1),  instruction);
+        result.insert(result.len().saturating_sub(1), instruction);
         state.reset();
         result
     }
@@ -126,7 +126,10 @@ impl Compile for ir::Add {
         state.release_reg(lhs);
         let xrhs = state.get_reg(rhs);
         state.release_reg(rhs);
-        vec![Instruction::MoveReg(xdes, xlhs), Instruction::Add(xdes, xrhs)]
+        vec![
+            Instruction::MoveReg(xdes, xlhs),
+            Instruction::Add(xdes, xrhs),
+        ]
     }
 }
 // Sub(Sub),
@@ -148,7 +151,10 @@ impl Compile for ir::Mul {
         state.release_reg(lhs);
         let xrhs = state.get_reg(rhs);
         state.release_reg(rhs);
-        vec![Instruction::MoveReg(xdes, xlhs), Instruction::Mul(xdes, xrhs)]
+        vec![
+            Instruction::MoveReg(xdes, xlhs),
+            Instruction::Mul(xdes, xrhs),
+        ]
     }
 }
 // Div(Div),
