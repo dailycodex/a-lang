@@ -1,10 +1,10 @@
 #![allow(unused)]
 use super::{
-    keyword, Block, CtrlColon, CtrlComma, CtrlDot, CtrlLBrace, CtrlLBracet, CtrlLParan, CtrlRBrace,
+    keyword, CtrlColon, CtrlComma, CtrlDot, CtrlLBrace, CtrlLBracet, CtrlLParan, CtrlRBrace,
     CtrlRBracet, CtrlRParan, CtrlRightArrow, CtrlSemiColon, CtrlSlash, CtrlStar,
     CtrlThickRightArrow, Expr, ExprBinary, ExprCall, ExprLit, ExprVar, Ident, Item, ItemFn, Lit,
     LitBool, LitChar, LitInt, LitStr, Op, OpAdd, OpDiv, OpEqual, OpEqualEqual, OpGeq, OpGrt, OpLeq,
-    OpLes, OpMul, OpNeq, OpNot, OpSub, Param, Statement, Type,
+    OpLes, OpMul, OpNeq, OpNot, OpSub, Param, Statement, Type, ExprIf, ExprBlock
 };
 
 use crate::lexer::{Span, Token, TokenStream};
@@ -50,21 +50,6 @@ impl Parser {
         Ok(ast)
     }
 
-    //     fn match_on(&mut self, expected: &[TokenKind]) -> bool {
-    //         let kind = self
-    //             .stream
-    //             .peek()
-    //             .as_ref()
-    //             .map(|t| t.kind())
-    //             .unwrap_or(TokenKind::Eof);
-    //         for token_kind in expected {
-    //             if token_kind == &kind {
-    //                 return true;
-    //             }
-    //         }
-    //         false
-    //     }
-    //
     fn program(&mut self) -> Result<Item, String> {
         self.declaration()
     }
@@ -87,7 +72,7 @@ impl Parser {
         let params = self.params()?;
         let ret_type = self.ret_type()?;
         let block = self.block()?;
-        let end_span = block.span;
+        let end_span = block.span();
         let span = Span::new(start_span.line, start_span.start, end_span.end);
         Ok(Item::Fn(ItemFn {
             name,
@@ -135,34 +120,30 @@ impl Parser {
                 break;
             }
         }
+
         if self.stream.next_if::<CtrlRParan>().is_none() {
-            dbg!(&self.stream);
             return Err("functions params end with ')'".into());
         }
-        // .ok_or::<String>({
-        //     "functions params end with ')'".into()
-        // })?;
         Ok(params)
     }
 
-    fn block(&mut self) -> Result<Block, String> {
-        let start_span = self
+    fn block(&mut self) -> Result<ExprBlock, String> {
+        let left_brace = self
             .stream
             .next_if::<CtrlLBrace>()
-            .ok_or::<String>("expected '{'".into())?
-            .span();
+            .cloned()
+            .ok_or::<String>("expected '{'".into())?;
         let mut stmts = vec![];
         while !self.stream.is_peek_a::<CtrlRBrace>() {
             let stmt = self.statement()?;
             stmts.push(stmt);
         }
-        let end_span = self
+        let right_brace = self
             .stream
             .next_if::<CtrlRBrace>()
-            .ok_or::<String>("expected '}'".into())?
-            .span();
-        let span = Span::new(start_span.line, start_span.start, end_span.end);
-        Ok(Block { stmts, span })
+            .cloned()
+            .ok_or::<String>("expected '}'".into())?;
+        Ok(ExprBlock::new(left_brace, right_brace, stmts))
     }
 
     fn statement(&mut self) -> Result<Statement, String> {
@@ -234,17 +215,16 @@ impl Parser {
         let mut expr = self.primary();
 
         loop {
-            if self.stream.next_if::<CtrlLParan>().is_none() {
+            let Some(left_paran) = self.stream.next_if::<CtrlLParan>().cloned() else {
                 break;
-            }
-            expr = self.finish_call(expr);
+            };
+            expr = self.finish_call(expr, left_paran);
         }
 
         expr
     }
 
-    fn finish_call(&mut self, caller: Expr) -> Expr {
-        let start_span = caller.span();
+    fn finish_call(&mut self, caller: Expr, left_paran: CtrlLParan) -> Expr {
         let mut args = vec![];
         if !self.stream.is_peek_a::<CtrlRParan>() {
             while !self.stream.is_peek_a::<CtrlRParan>() {
@@ -254,19 +234,11 @@ impl Parser {
                 };
             }
         }
-        let Some(end_span) = self
-            .stream
-            .next_if::<CtrlRParan>()
-            .map(|t| t.span()) else {
+        let Some(right_paran) = self.stream.next_if::<CtrlRParan>().cloned() else {
                 // TODO: make this report an error
                 panic!("expected a right paran");
         };
-        let span = Span::new(start_span.line, start_span.start, end_span.end);
-        Expr::Call(ExprCall {
-            caller: Box::new(caller),
-            args,
-            span,
-        })
+        Expr::Call(ExprCall::new(Box::new(caller), left_paran, args, right_paran))
     }
 
     fn primary(&mut self) -> Expr {

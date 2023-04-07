@@ -1,6 +1,6 @@
 macro_rules! keyword {
     ($name:ident) => {
-        #[derive(Debug, Clone)]
+        #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
         pub struct $name(pub crate::lexer::Span);
 
         impl crate::lexer::Token for $name {

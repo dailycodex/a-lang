@@ -3,7 +3,7 @@ use crate::lexer::Token;
 
 #[derive(Debug)]
 pub struct TokenStream {
-    stream: Vec<Box<dyn Token>>,
+    pub(crate) stream: Vec<Box<dyn Token>>,
     idx: usize,
 }
 

@@ -5,10 +5,11 @@ use std::fmt;
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Expr {
     Lit(ExprLit),
-    // Block(ExprBlock),
     Binary(ExprBinary),
     Call(ExprCall),
     Var(ExprVar),
+    If(ExprIf),
+    Block(ExprBlock),
 }
 
 impl fmt::Display for Expr {
@@ -18,6 +19,8 @@ impl fmt::Display for Expr {
             Self::Binary(ebin) => write!(f, "{ebin}"),
             Self::Call(ecall) => write!(f, "{ecall}"),
             Self::Var(evar) => write!(f, "{evar}"),
+            Self::If(i) => write!(f, "{i}"),
+            Self::Block(i) => write!(f, "{i}"),
         }
     }
 }
@@ -29,6 +32,8 @@ impl Expr {
             Self::Binary(i) => i.span(),
             Self::Call(i) => i.span(),
             Self::Var(i) => i.span(),
+            Self::If(i) => i.span(),
+            Self::Block(i) => i.span(),
         }
     }
 }
@@ -67,8 +72,7 @@ impl From<super::LitChar> for Expr {
 
 impl From<Ident> for Expr {
     fn from(name: Ident) -> Self {
-        let span = name.span;
-        Self::Var(ExprVar { name, span })
+        Self::Var(ExprVar::new(name))
     }
 }
 
@@ -93,6 +97,18 @@ impl From<ExprCall> for Expr {
 impl From<ExprVar> for Expr {
     fn from(expr: ExprVar) -> Self {
         Self::Var(expr)
+    }
+}
+
+impl From<ExprIf> for Expr {
+    fn from(expr: ExprIf) -> Self {
+        Self::If(expr)
+    }
+}
+
+impl From<ExprBlock> for Expr {
+    fn from(expr: ExprBlock) -> Self {
+        Self::Block(expr)
     }
 }
 
@@ -155,28 +171,44 @@ impl From<(Expr, Expr, Op)> for ExprBinary {
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ExprCall {
     pub caller: Box<Expr>,
+    pub left_paran: super::CtrlLParan,
     pub args: Vec<Expr>,
-    pub span: Span,
+    pub right_paran: super::CtrlRParan,
 }
 
 impl fmt::Display for ExprCall {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let Self { caller, args, .. } = &self;
-        let args = args.iter().map(ToString::to_string).collect::<String>();
-        write!(f, "({caller} {args})")
+        let args = args.iter().map(|i| format!("{i}, ")).collect::<String>();
+        write!(f, "({caller} ({args}))")
     }
 }
 
 impl ExprCall {
+    pub fn new(
+    caller: Box<Expr>,
+    left_paran: super::CtrlLParan,
+    args: Vec<Expr>,
+    right_paran: super::CtrlRParan,
+    ) -> Self {
+        Self {
+    caller,
+    left_paran,
+    args,
+    right_paran,
+        }
+    }
     pub fn span(&self) -> Span {
-        self.span
+        let line = self.caller.span().line;
+        let start = self.caller.span().start;
+        let end = self.right_paran.span().end;
+        Span::new(line, start, end)
     }
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ExprVar {
     pub name: Ident,
-    pub span: Span,
 }
 
 impl fmt::Display for ExprVar {
@@ -187,7 +219,79 @@ impl fmt::Display for ExprVar {
 }
 
 impl ExprVar {
+    pub fn new(name: Ident) -> Self {
+        Self {
+            name
+        }
+    }
+
     pub fn span(&self) -> Span {
-        self.span
+        self.name.span()
+    }
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub struct ExprIf {
+    pub if_token: super::keyword::If,
+    pub cond: Box<Expr>,
+    pub then_branch: ExprBlock,
+    pub else_branch: Option<(super::keyword::Else, Box<Expr>)>,
+}
+
+impl fmt::Display for ExprIf {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "if unimplemented display")
+    }
+}
+
+impl ExprIf {
+    pub fn span(&self) -> Span {
+        let line = self.if_token.span().line;
+        let start = self.if_token.span().start;
+        let end = self.else_branch
+            .as_ref()
+            .map(|i| i.1.span())
+            .unwrap_or(self.then_branch.span())
+            .end;
+        Span::new(line, start, end)
+    }
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub struct ExprBlock {
+    pub left_brace: super::CtrlLBrace,
+    pub right_brace: super::CtrlRBrace,
+    pub stmts: Vec<super::Statement>,
+}
+
+impl std::fmt::Display for ExprBlock {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self { stmts, .. } = &self;
+        let stmts = stmts
+            .iter()
+            .map(|stmt| format!("{stmt}\n"))
+            .collect::<String>();
+        write!(f, "{stmts}")
+    }
+}
+
+impl ExprBlock {
+    pub fn new(
+            left_brace: super::CtrlLBrace,
+            right_brace: super::CtrlRBrace,
+            stmts: Vec<super::Statement>,
+        ) -> Self {
+        Self {
+            left_brace,
+            right_brace,
+            stmts,
+        }
+    }
+
+    pub fn span(&self) -> Span {
+        let line = self.left_brace.span().line;
+        let start = self.left_brace.span().start;
+        let end = self.right_brace.span().end;
+        Span::new(line, start, end)
     }
 }

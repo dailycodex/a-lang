@@ -7,9 +7,9 @@ pub use instruction::*;
 use crate::lexer::*;
 
 use crate::parse::{
-    Block, CtrlColon, CtrlComma, CtrlDot, CtrlLBrace, CtrlLBracet, CtrlLParan, CtrlRBrace,
+    CtrlColon, CtrlComma, CtrlDot, CtrlLBrace, CtrlLBracet, CtrlLParan, CtrlRBrace,
     CtrlRBracet, CtrlRParan, CtrlRightArrow, CtrlSemiColon, CtrlSlash, CtrlStar,
-    CtrlThickRightArrow, Expr, ExprBinary, ExprCall, ExprLit, ExprVar, Ident, Item, ItemFn, Lit,
+    CtrlThickRightArrow, Expr, ExprBlock, ExprIf, ExprBinary, ExprCall, ExprLit, ExprVar, Ident, Item, ItemFn, Lit,
     LitBool, LitChar, LitInt, LitStr, Op, OpAdd, OpDiv, OpEqual, OpEqualEqual, OpGeq, OpGrt, OpLeq,
     OpLes, OpMul, OpNeq, OpNot, OpSub, Param, Statement, Type as PType,
 };
@@ -76,10 +76,11 @@ trait AstVisitor: Ir {
     fn visit_expr(&mut self, expr: &Expr) -> Reg {
         match expr {
             Expr::Lit(ref elit) => self.visit_expr_lit(elit),
-            // Block(ExprBlock) => unimplemented!(),
             Expr::Binary(ref ebinary) => self.visit_expr_binary(ebinary),
             Expr::Call(ref ecall) => self.visit_expr_call(ecall),
             Expr::Var(evar) => self.visit_expr_var(evar),
+            Expr::If(eif) => unimplemented!("If is not implemented for ir code gen"),
+            Expr::Block(eblock) => unimplemented!("Block is not implemented ir for code gen"),
         }
     }
 
@@ -88,7 +89,8 @@ trait AstVisitor: Ir {
         self.visit_expr(stmt);
     }
 
-    fn visit_block(&mut self, block: &Block) {
+    fn visit_expr_block(&mut self, block: &ExprBlock) {
+        // FIXME: This should return a Reg if we keep the current pattern
         for stmt in block.stmts.iter() {
             self.visit_stmt(stmt);
         }
@@ -221,7 +223,7 @@ impl AstVisitor for IrGenerator {
             .collect();
 
         self.push_to_block(Enter);
-        self.visit_block(&block);
+        self.visit_expr_block(&block);
         self.push_to_block(Leave);
         let body = self.block.clone();
         self.block.clear();

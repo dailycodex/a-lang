@@ -1,4 +1,4 @@
-use super::{Block, Ident, Param, Type};
+use super::{ExprBlock, Ident, Param, Type};
 use crate::lexer::{Span, Token};
 use std::fmt;
 
@@ -17,9 +17,11 @@ impl fmt::Display for Item {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ItemFn {
+    // FIXME: remove this span and add
+    //  pub keyword_fn: keyword::Fn,
     pub name: Ident,
     pub params: Vec<Param>,
-    pub block: Block,
+    pub block: ExprBlock,
     pub ret_type: Option<Type>,
     pub span: Span,
 }

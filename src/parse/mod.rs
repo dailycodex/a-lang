@@ -1,6 +1,8 @@
 #![allow(unused)]
 mod ast;
 mod parser;
+#[cfg(test)]
+mod test;
 
 pub use ast::keyword;
 pub use ast::*;

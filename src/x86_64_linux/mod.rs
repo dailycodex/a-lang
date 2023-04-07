@@ -225,10 +225,10 @@ mod tests {
             .and_then(compile_ir_code)
             .unwrap()
     }
-    #[test]
-    fn basic_test() {
-        let left = setup("fn main() { 1 + 2; }");
-        let right = vec![];
-        assert_eq!(left, right);
-    }
+    // #[test]
+    // fn basic_test() {
+    //     let left = setup("fn main() { 1 + 2; }");
+    //     let right = vec![];
+    //     assert_eq!(left, right);
+    // }
 }

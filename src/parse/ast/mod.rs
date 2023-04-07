@@ -4,7 +4,7 @@ pub mod keyword;
 mod lit;
 
 use crate::lexer::Span;
-pub use expr::{Expr, ExprBinary, ExprCall, ExprLit, ExprVar};
+pub use expr::{Expr, ExprBinary, ExprCall, ExprLit, ExprVar, ExprIf, ExprBlock};
 pub use item::{Item, ItemFn};
 pub use lit::{Lit, LitBool, LitChar, LitInt, LitStr};
 
@@ -195,22 +195,6 @@ from_token!(Ctrl, LParan, CtrlLParan);
 from_token!(Ctrl, RParan, CtrlRParan);
 from_token!(Ctrl, RightArrow, CtrlRightArrow);
 from_token!(Ctrl, ThickRightArrow, CtrlThickRightArrow);
-
-#[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Block {
-    pub stmts: Vec<Statement>,
-    pub span: Span,
-}
-impl std::fmt::Display for Block {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self { stmts, .. } = &self;
-        let stmts = stmts
-            .iter()
-            .map(|stmt| format!("{stmt}\n"))
-            .collect::<String>();
-        write!(f, "{stmts}")
-    }
-}
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Statement {
