@@ -58,8 +58,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn is_end(&mut self) -> bool {
-        self.src.peek().is_none()
-        // self.tp() >= self.len.saturating_sub(1)
+        self.tp() >= self.len.saturating_sub(1)
     }
 
     fn peek(&mut self) -> char {

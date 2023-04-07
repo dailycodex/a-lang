@@ -66,6 +66,10 @@ impl TokenStream {
             .is_some()
     }
 
+    pub fn peek_blind<'a>(&'a mut self) -> Option<&'a Box<dyn Token>> {
+        self.stream.get(self.idx)
+    }
+
     pub fn peek<'a, Expected>(&'a self) -> Option<&'a Expected>
     where
         Expected: Token,

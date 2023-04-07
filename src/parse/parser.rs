@@ -290,7 +290,7 @@ impl Parser {
                 .next_if::<Ident>()
                 .map(|i| Expr::from(i.clone()))) else {
                 // TODO: make this report an error
-                panic!("not a primary expression");
+                panic!("unknown expression '{:?}'", self.stream.peek_blind());
         };
         expr
     }
