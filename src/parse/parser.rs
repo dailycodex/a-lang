@@ -180,27 +180,15 @@ impl Parser {
 
     fn comparison(&mut self) -> Expr {
         let mut expr = self.term();
-        // while self.match_on(&[Grt, Les, Geq, Leq, EqEq, Neq]) {
-        fn is_one_of<A, B, C, D, E, F>(stream: &mut TokenStream) -> Option<Op>
-        where
-            A: Token + Clone + Into<Op>,
-            B: Token + Clone + Into<Op>,
-            C: Token + Clone + Into<Op>,
-            D: Token + Clone + Into<Op>,
-            E: Token + Clone + Into<Op>,
-            F: Token + Clone + Into<Op>,
-        {
-            stream
-                .next_if::<A>()
-                .map(|i| (*i).clone().into())
-                .or(stream.next_if::<B>().map(|i| (*i).clone().into()))
-                .or(stream.next_if::<C>().map(|i| (*i).clone().into()))
-                .or(stream.next_if::<D>().map(|i| (*i).clone().into()))
-                .or(stream.next_if::<E>().map(|i| (*i).clone().into()))
-                .or(stream.next_if::<F>().map(|i| (*i).clone().into()))
-        }
         loop {
-            let op = is_one_of::<OpGrt, OpLes, OpGeq, OpLeq, OpEqualEqual, OpNeq>(&mut self.stream);
+            let op = self.stream
+                .next_if::<OpGrt>()
+                .map(|i| (*i).clone().into())
+                .or(self.stream.next_if::<OpLes>().map(|i| (*i).clone().into()))
+                .or(self.stream.next_if::<OpGeq>().map(|i| (*i).clone().into()))
+                .or(self.stream.next_if::<OpLeq>().map(|i| (*i).clone().into()))
+                .or(self.stream.next_if::<OpEqualEqual>().map(|i| (*i).clone().into()))
+                .or(self.stream.next_if::<OpNeq>().map(|i| (*i).clone().into()));
             if op.is_none() {
                 break;
             }
@@ -212,18 +200,11 @@ impl Parser {
 
     fn term(&mut self) -> Expr {
         let mut expr = self.factor();
-        fn is_one_of<A, B>(stream: &mut TokenStream) -> Option<Op>
-        where
-            A: Token + Clone + Into<Op>,
-            B: Token + Clone + Into<Op>,
-        {
-            stream
-                .next_if::<A>()
-                .map(|i| (*i).clone().into())
-                .or(stream.next_if::<B>().map(|i| (*i).clone().into()))
-        }
         loop {
-            let op = is_one_of::<OpSub, OpAdd>(&mut self.stream);
+            let op = self.stream
+                .next_if::<OpSub>()
+                .map(|i| (*i).clone().into())
+                .or(self.stream.next_if::<OpAdd>().map(|i| (*i).clone().into()));
             if op.is_none() {
                 break;
             }
@@ -235,18 +216,11 @@ impl Parser {
 
     fn factor(&mut self) -> Expr {
         let mut expr = self.call();
-        fn is_one_of<A, B>(stream: &mut TokenStream) -> Option<Op>
-        where
-            A: Token + Clone + Into<Op>,
-            B: Token + Clone + Into<Op>,
-        {
-            stream
-                .next_if::<A>()
-                .map(|i| (*i).clone().into())
-                .or(stream.next_if::<B>().map(|i| (*i).clone().into()))
-        }
         loop {
-            let op = is_one_of::<OpMul, OpDiv>(&mut self.stream);
+            let op = self.stream
+                .next_if::<OpMul>()
+                .map(|i| (*i).clone().into())
+                .or(self.stream.next_if::<OpDiv>().map(|i| (*i).clone().into()));
             if op.is_none() {
                 break;
             }
@@ -280,12 +254,13 @@ impl Parser {
                 };
             }
         }
-        // FIXME: this should be fixed on the unwrap
-        let end_span = self
+        let Some(end_span) = self
             .stream
             .next_if::<CtrlRParan>()
-            .map(|t| t.span())
-            .unwrap();
+            .map(|t| t.span()) else {
+                // TODO: make this report an error
+                panic!("expected a right paran");
+        };
         let span = Span::new(start_span.line, start_span.start, end_span.end);
         Expr::Call(ExprCall {
             caller: Box::new(caller),
@@ -295,7 +270,7 @@ impl Parser {
     }
 
     fn primary(&mut self) -> Expr {
-        self.stream
+        let Some(expr) = self.stream
             .next_if::<LitInt>()
             .map(|i| Expr::from(i.clone()))
             .or(self
@@ -313,7 +288,10 @@ impl Parser {
             .or(self
                 .stream
                 .next_if::<Ident>()
-                .map(|i| Expr::from(i.clone())))
-            .unwrap()
+                .map(|i| Expr::from(i.clone()))) else {
+                // TODO: make this report an error
+                panic!("not a primary expression");
+        };
+        expr
     }
 }
