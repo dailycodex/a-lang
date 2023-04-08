@@ -59,11 +59,11 @@ impl Parser {
     }
 
     fn item_fn(&mut self) -> Result<Item, String> {
-        let start_span = self
+        let keyword_fn = self
             .stream
             .next_if::<keyword::Fn>()
-            .ok_or::<String>("expected fn".into())?
-            .span();
+            .cloned()
+            .ok_or::<String>("expected fn".into())?;
         let name = self
             .stream
             .next_if::<Ident>()
@@ -72,15 +72,12 @@ impl Parser {
         let params = self.params()?;
         let ret_type = self.ret_type()?;
         let block = self.block()?;
-        let end_span = block.span();
-        let span = Span::new(start_span.line, start_span.start, end_span.end);
-        Ok(Item::Fn(ItemFn {
+        Ok(Item::Fn(ItemFn::new(
+            keyword_fn,
             name,
             params,
             block,
-            ret_type,
-            span,
-        }))
+            ret_type)))
     }
 
     fn ret_type(&mut self) -> Result<Option<Type>, String> {

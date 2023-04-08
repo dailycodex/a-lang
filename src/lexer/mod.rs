@@ -2,6 +2,8 @@ mod scanner;
 mod span;
 mod token;
 mod token_stream;
+#[cfg(test)]
+mod test;
 
 use scanner::Lexer;
 pub use span::Span;

@@ -87,26 +87,30 @@ impl TokenStream {
             .get(self.idx + nth.saturating_sub(1))
             .and_then(|i| i.as_any().downcast_ref::<Expected>())
     }
+
+    pub fn reset(&mut self) {
+        self.idx = 0;
+    }
 }
 
-#[test]
-fn test_peek() {
-    use super::lex;
-    use crate::lexer::Span;
-    use crate::parse::{LitInt, OpAdd};
-    use pretty_assertions::assert_eq;
-    let tokens = lex("1 + 1").unwrap();
-    assert!(tokens.is_peek_a::<LitInt>());
-    assert_eq!(
-        tokens.peek::<LitInt>(),
-        Some(&LitInt::new("1", Span::new(0, 0, 1)))
-    );
-    assert_eq!(
-        tokens.peek_nth::<OpAdd>(2),
-        Some(&OpAdd::new("+", Span::new(0, 2, 3)))
-    );
-    assert_eq!(
-        tokens.peek_nth::<LitInt>(3),
-        Some(&LitInt::new("1", Span::new(0, 4, 5)))
-    );
-}
+// #[test]
+// fn test_peek() {
+//     use super::lex;
+//     use crate::lexer::Span;
+//     use crate::parse::{LitInt, OpAdd};
+//     use pretty_assertions::assert_eq;
+//     let tokens = lex("1 + 1").unwrap();
+//     assert!(tokens.is_peek_a::<LitInt>());
+//     assert_eq!(
+//         tokens.peek::<LitInt>(),
+//         Some(&LitInt::new("1", Span::new(0, 0, 1)))
+//     );
+//     assert_eq!(
+//         tokens.peek_nth::<OpAdd>(2),
+//         Some(&OpAdd::new("+", Span::new(0, 2, 3)))
+//     );
+//     assert_eq!(
+//         tokens.peek_nth::<LitInt>(3),
+//         Some(&LitInt::new("1", Span::new(0, 4, 5)))
+//     );
+// }

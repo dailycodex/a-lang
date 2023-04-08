@@ -1,0 +1,18 @@
+---
+source: src/lexer/test.rs
+expression: snapshot_lexing(contents)
+---
+fn main() {
+^^ Fn((0,0)->(0,2))
+   ^^^^ Ident 'main' (0,3)->(0,7)
+       ^ CtrlLParan '(' (0,7)->(0,8)
+        ^ CtrlRParan ')' (0,8)->(0,9)
+          ^ CtrlLBrace '{' (0,10)->(0,11)
+  1 + 3;
+  ^ LitInt '1' (1,2)->(1,3)
+    ^ OpAdd '+' (1,4)->(1,5)
+      ^ LitInt '3' (1,6)->(1,7)
+       ^ CtrlSemiColon ';' (1,7)->(1,8)
+}
+^ CtrlRBrace '}' (2,0)->(2,1)
+

@@ -54,7 +54,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn tp(&self) -> usize {
-        self.span.end
+        self.span.idx_end
     }
 
     fn is_end(&mut self) -> bool {
@@ -83,7 +83,7 @@ impl<'a> Lexer<'a> {
 
     fn span(&mut self) -> Span {
         let span = self.span;
-        self.span.start = self.span.end;
+        self.span.reset(None);
         span
     }
 
@@ -188,7 +188,7 @@ impl<'a> Lexer<'a> {
             // 'λ' => self.op_token("λ"),
             '\n' | ' ' | '\0' => {
                 let ch = self.next();
-                self.span.start = self.span.end.saturating_sub(self.last_chr_len);
+                self.span.reset(Some(self.last_chr_len));
                 self.parse(ch)
             }
             _ => panic!(),

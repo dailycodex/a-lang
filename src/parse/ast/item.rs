@@ -17,13 +17,35 @@ impl fmt::Display for Item {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ItemFn {
-    // FIXME: remove this span and add
-    //  pub keyword_fn: keyword::Fn,
+    pub keyword_fn: super::keyword::Fn,
     pub name: Ident,
     pub params: Vec<Param>,
     pub block: ExprBlock,
     pub ret_type: Option<Type>,
-    pub span: Span,
+}
+
+impl ItemFn {
+    pub fn new(
+            keyword_fn: super::keyword::Fn,
+            name: Ident,
+            params: Vec<Param>,
+            block: ExprBlock,
+            ret_type: Option<Type>,
+        ) -> Self {
+        Self {
+            keyword_fn,
+            name,
+            params,
+            block,
+            ret_type,
+        }
+    }
+
+    pub fn span(&self) -> Span {
+        let start = self.keyword_fn.span();
+        let end = self.block.span();
+        Span::from((start, end))
+    }
 }
 
 impl fmt::Display for ItemFn {

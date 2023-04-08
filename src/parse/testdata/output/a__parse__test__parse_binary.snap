@@ -1,0 +1,7 @@
+---
+source: src/parse/test.rs
+expression: ast_string
+---
+(func main <NULL> () ((+ 1 (* 2 3)))
+)
+

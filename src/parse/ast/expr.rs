@@ -154,7 +154,7 @@ impl ExprBinary {
     pub fn span(&self) -> Span {
         let start = self.left.span();
         let end = self.right.span();
-        Span::new(start.line, start.start, end.end)
+        Span::from((start, end))
     }
 }
 
@@ -199,10 +199,9 @@ impl ExprCall {
         }
     }
     pub fn span(&self) -> Span {
-        let line = self.caller.span().line;
-        let start = self.caller.span().start;
-        let end = self.right_paran.span().end;
-        Span::new(line, start, end)
+        let start = self.caller.span();
+        let end = self.right_paran.span();
+        Span::from((start, end))
     }
 }
 
@@ -246,14 +245,13 @@ impl fmt::Display for ExprIf {
 
 impl ExprIf {
     pub fn span(&self) -> Span {
-        let line = self.if_token.span().line;
-        let start = self.if_token.span().start;
+        let start = self.if_token.span();
         let end = self.else_branch
             .as_ref()
             .map(|i| i.1.span())
             .unwrap_or(self.then_branch.span())
-            .end;
-        Span::new(line, start, end)
+            ;
+        Span::from((start, end))
     }
 }
 
@@ -289,9 +287,8 @@ impl ExprBlock {
     }
 
     pub fn span(&self) -> Span {
-        let line = self.left_brace.span().line;
-        let start = self.left_brace.span().start;
-        let end = self.right_brace.span().end;
-        Span::new(line, start, end)
+        let start = self.left_brace.span();
+        let end = self.right_brace.span();
+        Span::from((start, end))
     }
 }

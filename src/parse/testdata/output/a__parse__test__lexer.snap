@@ -1,8 +1,0 @@
----
-source: src/parse/test.rs
-expression: snapshot_lexing(contents)
----
-fn main() {
-  1 + 3;
-}
-

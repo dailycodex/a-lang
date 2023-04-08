@@ -11,7 +11,7 @@ pub use lit::{Lit, LitBool, LitChar, LitInt, LitStr};
 #[macro_export]
 macro_rules! token {
     ($name:ident) => {
-        #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
+        #[derive(Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
         pub struct $name {
             pub value: String,
             pub span: crate::lexer::Span,
@@ -43,6 +43,11 @@ macro_rules! token {
         impl std::fmt::Display for $name {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 write!(f, "{}", self.value)
+            }
+        }
+        impl std::fmt::Debug for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!( f, "{} '{}' {:?}", stringify!($name), self.value, self.span)
             }
         }
     };
