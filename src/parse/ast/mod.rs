@@ -4,7 +4,7 @@ pub mod keyword;
 mod lit;
 
 use crate::lexer::Span;
-pub use expr::{Expr, ExprBinary, ExprCall, ExprLit, ExprVar, ExprIf, ExprBlock};
+pub use expr::{Expr, ExprBinary, ExprBlock, ExprCall, ExprIf, ExprLit, ExprVar};
 pub use item::{Item, ItemFn};
 pub use lit::{Lit, LitBool, LitChar, LitInt, LitStr};
 
@@ -47,7 +47,12 @@ macro_rules! token {
         }
         impl std::fmt::Debug for $name {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                write!( f, "{} '{}' {:?}", stringify!($name), self.value, self.span)
+                write!(f, "{} '{}' {:?}", stringify!($name), self.value, self.span)
+            }
+        }
+        impl $name {
+            pub fn parse<T: std::str::FromStr>(&self) -> Result<T, <T as std::str::FromStr>::Err> {
+                self.value.parse::<T>()
             }
         }
     };

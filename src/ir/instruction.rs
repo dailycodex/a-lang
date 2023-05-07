@@ -102,9 +102,10 @@ pub struct Copy {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Conditional {
-    pub jump: Label,
-    pub check: Reg,
+    pub label: Label,
+    pub reg: Reg,
 }
+
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Call {
@@ -125,13 +126,11 @@ impl Jump {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DefLabel {
-    pub label: Label,
-}
+pub struct DefLabel(pub Label);
 
 impl DefLabel {
     pub fn name(&self) -> String {
-        self.label.0.to_string()
+        self.0.0.to_string()
     }
 }
 

@@ -186,16 +186,16 @@ impl fmt::Display for ExprCall {
 
 impl ExprCall {
     pub fn new(
-    caller: Box<Expr>,
-    left_paran: super::CtrlLParan,
-    args: Vec<Expr>,
-    right_paran: super::CtrlRParan,
+        caller: Box<Expr>,
+        left_paran: super::CtrlLParan,
+        args: Vec<Expr>,
+        right_paran: super::CtrlRParan,
     ) -> Self {
         Self {
-    caller,
-    left_paran,
-    args,
-    right_paran,
+            caller,
+            left_paran,
+            args,
+            right_paran,
         }
     }
     pub fn span(&self) -> Span {
@@ -219,9 +219,7 @@ impl fmt::Display for ExprVar {
 
 impl ExprVar {
     pub fn new(name: Ident) -> Self {
-        Self {
-            name
-        }
+        Self { name }
     }
 
     pub fn span(&self) -> Span {
@@ -244,13 +242,26 @@ impl fmt::Display for ExprIf {
 }
 
 impl ExprIf {
+    pub fn new(
+        if_token: super::keyword::If,
+        cond: Box<Expr>,
+        then_branch: ExprBlock,
+        else_branch: Option<(super::keyword::Else, Box<Expr>)>,
+    ) -> Self {
+        Self {
+            if_token,
+            cond,
+            then_branch,
+            else_branch,
+        }
+    }
     pub fn span(&self) -> Span {
         let start = self.if_token.span();
-        let end = self.else_branch
+        let end = self
+            .else_branch
             .as_ref()
             .map(|i| i.1.span())
-            .unwrap_or(self.then_branch.span())
-            ;
+            .unwrap_or(self.then_branch.span());
         Span::from((start, end))
     }
 }
@@ -275,10 +286,10 @@ impl std::fmt::Display for ExprBlock {
 
 impl ExprBlock {
     pub fn new(
-            left_brace: super::CtrlLBrace,
-            right_brace: super::CtrlRBrace,
-            stmts: Vec<super::Statement>,
-        ) -> Self {
+        left_brace: super::CtrlLBrace,
+        right_brace: super::CtrlRBrace,
+        stmts: Vec<super::Statement>,
+    ) -> Self {
         Self {
             left_brace,
             right_brace,

@@ -26,12 +26,12 @@ pub struct ItemFn {
 
 impl ItemFn {
     pub fn new(
-            keyword_fn: super::keyword::Fn,
-            name: Ident,
-            params: Vec<Param>,
-            block: ExprBlock,
-            ret_type: Option<Type>,
-        ) -> Self {
+        keyword_fn: super::keyword::Fn,
+        name: Ident,
+        params: Vec<Param>,
+        block: ExprBlock,
+        ret_type: Option<Type>,
+    ) -> Self {
         Self {
             keyword_fn,
             name,

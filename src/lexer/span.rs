@@ -13,13 +13,13 @@ pub struct Span {
 
 impl Span {
     pub fn new(
-    idx_start: usize,
-    idx_end: usize,
-    row_start: usize,
-    col_start: usize,
-    row_end: usize,
-    col_end: usize,
-        ) -> Self {
+        idx_start: usize,
+        idx_end: usize,
+        row_start: usize,
+        col_start: usize,
+        row_end: usize,
+        col_end: usize,
+    ) -> Self {
         Self {
             idx_start,
             idx_end,

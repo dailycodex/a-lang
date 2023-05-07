@@ -1,6 +1,6 @@
-use pretty_assertions::assert_eq;
 use super::*;
 use crate::lexer::lex;
+use pretty_assertions::assert_eq;
 
 pub fn snapshot_lexing(input: &str) -> String {
     let tokens = match lex(input) {
@@ -23,7 +23,7 @@ pub fn snapshot_lexing(input: &str) -> String {
             }
 
             output += &" ".repeat(tok.span().col_start);
-            output += &"^".repeat(tok.span().len());// tok.span().col_end - tok.span().col_start);
+            output += &"^".repeat(tok.span().len()); // tok.span().col_end - tok.span().col_start);
             output += &format!(" {tok:?}");
             output += "\n"
         }

@@ -164,8 +164,6 @@ impl<'a> Lexer<'a> {
             // '|' if self.peek() == '|' => self.token::<>("||"),
             // '&' if self.peek() == '&' => self.token::<>("&&"),
             '!' if self.peek() == '=' => self.token::<OpNeq>("!="),
-            // // '|' => self.op_token("|"),
-            // // '&' => self.op_token("&"),
             '-' => self.token::<OpSub>("-"),
             '+' => self.token::<OpAdd>("+"),
             '*' => self.token::<OpMul>("*"),

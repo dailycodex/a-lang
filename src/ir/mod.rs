@@ -7,11 +7,11 @@ pub use instruction::*;
 use crate::lexer::*;
 
 use crate::parse::{
-    CtrlColon, CtrlComma, CtrlDot, CtrlLBrace, CtrlLBracet, CtrlLParan, CtrlRBrace,
-    CtrlRBracet, CtrlRParan, CtrlRightArrow, CtrlSemiColon, CtrlSlash, CtrlStar,
-    CtrlThickRightArrow, Expr, ExprBlock, ExprIf, ExprBinary, ExprCall, ExprLit, ExprVar, Ident, Item, ItemFn, Lit,
-    LitBool, LitChar, LitInt, LitStr, Op, OpAdd, OpDiv, OpEqual, OpEqualEqual, OpGeq, OpGrt, OpLeq,
-    OpLes, OpMul, OpNeq, OpNot, OpSub, Param, Statement, Type as PType,
+    CtrlColon, CtrlComma, CtrlDot, CtrlLBrace, CtrlLBracet, CtrlLParan, CtrlRBrace, CtrlRBracet,
+    CtrlRParan, CtrlRightArrow, CtrlSemiColon, CtrlSlash, CtrlStar, CtrlThickRightArrow, Expr,
+    ExprBinary, ExprBlock, ExprCall, ExprIf, ExprLit, ExprVar, Ident, Item, ItemFn, Lit, LitBool,
+    LitChar, LitInt, LitStr, Op, OpAdd, OpDiv, OpEqual, OpEqualEqual, OpGeq, OpGrt, OpLeq, OpLes,
+    OpMul, OpNeq, OpNot, OpSub, Param, Statement, Type as PType,
 };
 
 pub fn code_gen(ast: Vec<Item>) -> Result<Vec<Instruction>, Vec<String>> {
@@ -22,6 +22,12 @@ pub fn code_gen(ast: Vec<Item>) -> Result<Vec<Instruction>, Vec<String>> {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Label(pub String);
+
+impl std::fmt::Display for Label {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 impl From<&Ident> for Label {
     fn from(value: &Ident) -> Self {
@@ -44,8 +50,10 @@ impl From<u64> for Imm {
 }
 
 trait Ir {
+    fn def_label(&mut self, label: Label);
     fn load_imm(&mut self, imm: Imm) -> Reg;
     fn binary(&mut self, op: &Op, lhs: Reg, rhs: Reg) -> Reg;
+    fn conditional(&mut self, label: Label, reg: Reg) -> Reg;
     fn call(&mut self, label: Label, args: Vec<Reg>, ret: Reg) -> Reg;
 }
 
@@ -58,6 +66,8 @@ trait AstVisitor: Ir {
     fn visit_item_fn(&mut self, item_fn: &ItemFn);
     fn visit_lit_int(&mut self, lit_int: &LitInt) -> Reg;
     fn visit_lit_bool(&mut self, lit_bool: &LitBool) -> Reg;
+
+    fn visit_expr_if(&mut self, expr_if: &ExprIf) -> Reg;
 
     fn visit_lit(&mut self, lit: &Lit) -> Reg {
         match lit {
@@ -79,7 +89,7 @@ trait AstVisitor: Ir {
             Expr::Binary(ref ebinary) => self.visit_expr_binary(ebinary),
             Expr::Call(ref ecall) => self.visit_expr_call(ecall),
             Expr::Var(evar) => self.visit_expr_var(evar),
-            Expr::If(eif) => unimplemented!("If is not implemented for ir code gen"),
+            Expr::If(eif) => self.visit_expr_if(eif),
             Expr::Block(eblock) => unimplemented!("Block is not implemented ir for code gen"),
         }
     }
@@ -111,6 +121,7 @@ struct IrGenerator {
     block: Vec<Instruction>,
     reg_counter: usize,
     vars: HashMap<String, Reg>,
+    gen_label_number: usize,
 }
 
 impl IrGenerator {
@@ -131,28 +142,50 @@ impl IrGenerator {
     fn reset_regester_count(&mut self) {
         self.reg_counter = 0;
     }
+
+    fn gen_label(&mut self) -> Label {
+        let number = self.gen_label_number;
+        self.gen_label_number += 1;
+        Label(format!(".L{}", number))
+    }
 }
 
 impl Ir for IrGenerator {
+
+    fn def_label(&mut self, label: Label) {
+        let instruction: Instruction = DefLabel(label).into();
+        self.push_to_block(instruction);
+    }
+
     fn load_imm(&mut self, imm: Imm) -> Reg {
         let des = self.get_reg();
         let load = LoadImm { des, imm };
         self.push_to_block(load);
         des
     }
+
     fn binary(&mut self, op: &Op, lhs: Reg, rhs: Reg) -> Reg {
         let des = self.get_reg();
         let instruction: Instruction = match op {
             Op::Add(_) => Add { des, lhs, rhs }.into(),
-
             Op::Sub(_) => Sub { des, lhs, rhs }.into(),
             Op::Mul(_) => Mul { des, lhs, rhs }.into(),
             Op::Div(_) => Div { des, lhs, rhs }.into(),
-            _ => unimplemented!(),
+            _ => unimplemented!("{op:?}"),
         };
         self.push_to_block(instruction);
         des
     }
+
+    fn conditional(&mut self, label: Label, reg: Reg) -> Reg {
+        let instruction: Instruction = Conditional {
+            reg,
+            label,
+        }.into();
+        self.push_to_block(instruction);
+        reg
+    }
+
     fn call(&mut self, caller: Label, args: Vec<Reg>, ret: Reg) -> Reg {
         let instruction: Instruction = Call { caller, args, ret }.into();
         self.push_to_block(instruction);
@@ -161,35 +194,15 @@ impl Ir for IrGenerator {
 }
 
 impl AstVisitor for IrGenerator {
-    fn visit_params(&mut self, params: &Param) -> Reg {
-        let Param { name, .. } = params;
-        let des = self.get_reg();
-        self.vars.insert(name.value(), des);
-        des
-    }
-
     fn visit_expr_var(&mut self, expr_var: &ExprVar) -> Reg {
         let ExprVar { name, .. } = expr_var;
         *self.vars.get(&name.value()).unwrap()
     }
 
-    fn visit_lit_int(&mut self, lit_int: &LitInt) -> Reg {
-        let imm: Imm = lit_int.parse::<u64>().unwrap().into();
-        self.load_imm(imm)
-    }
-
-    fn visit_lit_bool(&mut self, lit_bool: &LitBool) -> Reg {
-        let imm: Imm = lit_bool.parse::<u64>().unwrap().into();
-        self.load_imm(imm)
-    }
-
-    fn visit_expr_binary(&mut self, bin: &ExprBinary) -> Reg {
-        let ExprBinary {
-            left, right, op, ..
-        } = bin;
-        let lhs = self.visit_expr(left);
-        let rhs = self.visit_expr(right);
-        let des = self.binary(op, lhs, rhs);
+    fn visit_params(&mut self, params: &Param) -> Reg {
+        let Param { name, .. } = params;
+        let des = self.get_reg();
+        self.vars.insert(name.value(), des);
         des
     }
 
@@ -207,6 +220,16 @@ impl AstVisitor for IrGenerator {
         self.call(name.into(), args, ret)
     }
 
+    fn visit_expr_binary(&mut self, bin: &ExprBinary) -> Reg {
+        let ExprBinary {
+            left, right, op, ..
+        } = bin;
+        let lhs = self.visit_expr(left);
+        let rhs = self.visit_expr(right);
+        let des = self.binary(op, lhs, rhs);
+        des
+    }
+
     fn visit_item_fn(&mut self, item_fn: &ItemFn) {
         let ItemFn {
             name,
@@ -216,6 +239,7 @@ impl AstVisitor for IrGenerator {
             ..
         } = item_fn;
 
+        self.gen_label_number = 0;
         self.reset_regester_count();
         let params = params
             .iter()
@@ -233,6 +257,38 @@ impl AstVisitor for IrGenerator {
             ret: Type::I64,
             body,
         });
+    }
+
+    fn visit_lit_int(&mut self, lit_int: &LitInt) -> Reg {
+        let imm: Imm = lit_int.parse::<u64>().unwrap().into();
+        self.load_imm(imm)
+    }
+
+    fn visit_lit_bool(&mut self, lit_bool: &LitBool) -> Reg {
+        let num: bool = lit_bool.parse::<bool>().unwrap();
+        let imm: Imm = (num as u64).into();
+        self.load_imm(imm)
+    }
+
+    fn visit_expr_if(&mut self, expr_if: &ExprIf) -> Reg {
+        let ExprIf {
+            if_token,
+            cond,
+            then_branch,
+            else_branch,
+        } = expr_if;
+        // pub struct ExprIf {
+        //     pub if_token: super::keyword::If,
+        //     pub cond: Box<Expr>,
+        //     pub then_branch: ExprBlock,
+        //     pub else_branch: Option<(super::keyword::Else, Box<Expr>)>,
+        // }
+        let cond_reg = self.visit_expr(cond);
+        let label = self.gen_label();
+        let des = self.conditional(label.clone(), cond_reg);
+        self.visit_expr_block(then_branch);
+        self.def_label(label);
+        des
     }
 }
 

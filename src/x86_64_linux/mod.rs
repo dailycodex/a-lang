@@ -40,6 +40,9 @@ pub enum Instruction {
     DefLabel(String),
     Call(String),
     Jump(String),
+    JumpZero(String),
+    Cmp(X86Reg, X86Reg),
+    Test(X86Reg, X86Reg),
     ProLog,
     Epilog,
 }
@@ -56,6 +59,9 @@ impl fmt::Display for Instruction {
             Self::DefLabel(name) => write!(f, "__{}__:\n", name),
             Self::Call(name) => write!(f, "  call __{}__\n", name),
             Self::Jump(name) => write!(f, "  jmp __{}__\n", name),
+            Self::JumpZero(name) => write!(f, "  jz __{}__\n", name),
+            Self::Cmp(lhs, rhs) => write!(f, "  cmp {lhs}, {rhs}\n"),
+            Self::Test(lhs, rhs) => write!(f, "  test {lhs}, {rhs}\n"),
             Self::ProLog => write!(f, "  push rbp\n  mov  rbp,    rsp\n"),
             Self::Epilog => write!(f, "  mov  rsp,    rbp\n  pop  rbp\n  ret\n"),
         }
@@ -176,7 +182,11 @@ impl Compile for ir::Copy {
 // Conditional(Conditional),
 impl Compile for ir::Conditional {
     fn compile(&self, state: &mut RegState) -> Vec<Instruction> {
-        unimplemented!("{:?}", self)
+        let des = state.get_reg(&self.reg);
+        vec![
+            Instruction::Test(des, des),
+            Instruction::JumpZero(self.label.to_string()),
+        ]
     }
 }
 // Jump(Jump),

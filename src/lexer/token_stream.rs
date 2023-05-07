@@ -13,7 +13,7 @@ impl TokenStream {
     }
 
     pub fn is_not_at_end(&self) -> bool {
-        self.idx < self.stream.len()
+        self.idx < self.stream.len() - 1
     }
 
     pub fn next<'a>(&'a mut self) -> Option<&'a Box<dyn Token>> {

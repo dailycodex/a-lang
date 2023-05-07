@@ -2,9 +2,9 @@
 use super::{
     keyword, CtrlColon, CtrlComma, CtrlDot, CtrlLBrace, CtrlLBracet, CtrlLParan, CtrlRBrace,
     CtrlRBracet, CtrlRParan, CtrlRightArrow, CtrlSemiColon, CtrlSlash, CtrlStar,
-    CtrlThickRightArrow, Expr, ExprBinary, ExprCall, ExprLit, ExprVar, Ident, Item, ItemFn, Lit,
-    LitBool, LitChar, LitInt, LitStr, Op, OpAdd, OpDiv, OpEqual, OpEqualEqual, OpGeq, OpGrt, OpLeq,
-    OpLes, OpMul, OpNeq, OpNot, OpSub, Param, Statement, Type, ExprIf, ExprBlock
+    CtrlThickRightArrow, Expr, ExprBinary, ExprBlock, ExprCall, ExprIf, ExprLit, ExprVar, Ident,
+    Item, ItemFn, Lit, LitBool, LitChar, LitInt, LitStr, Op, OpAdd, OpDiv, OpEqual, OpEqualEqual,
+    OpGeq, OpGrt, OpLeq, OpLes, OpMul, OpNeq, OpNot, OpSub, Param, Statement, Type,
 };
 
 use crate::lexer::{Span, Token, TokenStream};
@@ -50,6 +50,17 @@ impl Parser {
         Ok(ast)
     }
 
+    fn expr_next_if<Expected>(&mut self) -> Option<Expr>
+    where
+        Expected: Token + Clone,
+        Expr: From<Expected>,
+    {
+        self.stream
+            .next_if::<Expected>()
+            .cloned()
+            .map(|i| Expr::from(i))
+    }
+
     fn program(&mut self) -> Result<Item, String> {
         self.declaration()
     }
@@ -73,11 +84,8 @@ impl Parser {
         let ret_type = self.ret_type()?;
         let block = self.block()?;
         Ok(Item::Fn(ItemFn::new(
-            keyword_fn,
-            name,
-            params,
-            block,
-            ret_type)))
+            keyword_fn, name, params, block, ret_type,
+        )))
     }
 
     fn ret_type(&mut self) -> Result<Option<Type>, String> {
@@ -153,19 +161,55 @@ impl Parser {
     }
 
     fn expression(&mut self) -> Expr {
+        self.if_expression()
+    }
+
+    // NOTE: Probably best that these functions return a Option over a Result cause then functions
+    // will do there own error reporting at the point of the error.
+    // Something like
+    // ```
+    // self.report(Error::MissingSimiColon(span))
+    // ```
+    fn if_expression(&mut self) -> Expr {
+        if self.stream.peek::<keyword::If>().is_some() {
+            // HACK: this implemention is a bit of a hack with all the funcitons not returning a
+            // Result.
+            let if_token = self.stream.next_as::<keyword::If>().cloned().unwrap();
+            let cond = Box::new(self.comparison());
+            let then_branch = self.block().expect("failed to get block");
+            let else_branch = self.else_branch();
+            return ExprIf::new(if_token, cond, then_branch, else_branch).into();
+        }
         self.comparison()
+    }
+
+    fn else_branch(&mut self) -> Option<(keyword::Else, Box<Expr>)> {
+        let Some(keyword_else) = self.stream.next_if::<keyword::Else>().cloned() else {
+            return None;
+        };
+        let block = if self.stream.peek::<keyword::If>().is_some() {
+            self.if_expression()
+        } else {
+            // HACK: Fix this expected
+            Expr::Block(self.block().expect("failed to get block"))
+        };
+        Some((keyword_else, Box::new(block)))
     }
 
     fn comparison(&mut self) -> Expr {
         let mut expr = self.term();
         loop {
-            let op = self.stream
+            let op = self
+                .stream
                 .next_if::<OpGrt>()
                 .map(|i| (*i).clone().into())
                 .or(self.stream.next_if::<OpLes>().map(|i| (*i).clone().into()))
                 .or(self.stream.next_if::<OpGeq>().map(|i| (*i).clone().into()))
                 .or(self.stream.next_if::<OpLeq>().map(|i| (*i).clone().into()))
-                .or(self.stream.next_if::<OpEqualEqual>().map(|i| (*i).clone().into()))
+                .or(self
+                    .stream
+                    .next_if::<OpEqualEqual>()
+                    .map(|i| (*i).clone().into()))
                 .or(self.stream.next_if::<OpNeq>().map(|i| (*i).clone().into()));
             if op.is_none() {
                 break;
@@ -179,7 +223,8 @@ impl Parser {
     fn term(&mut self) -> Expr {
         let mut expr = self.factor();
         loop {
-            let op = self.stream
+            let op = self
+                .stream
                 .next_if::<OpSub>()
                 .map(|i| (*i).clone().into())
                 .or(self.stream.next_if::<OpAdd>().map(|i| (*i).clone().into()));
@@ -195,7 +240,8 @@ impl Parser {
     fn factor(&mut self) -> Expr {
         let mut expr = self.call();
         loop {
-            let op = self.stream
+            let op = self
+                .stream
                 .next_if::<OpMul>()
                 .map(|i| (*i).clone().into())
                 .or(self.stream.next_if::<OpDiv>().map(|i| (*i).clone().into()));
@@ -235,29 +281,20 @@ impl Parser {
                 // TODO: make this report an error
                 panic!("expected a right paran");
         };
-        Expr::Call(ExprCall::new(Box::new(caller), left_paran, args, right_paran))
+        Expr::Call(ExprCall::new(
+            Box::new(caller),
+            left_paran,
+            args,
+            right_paran,
+        ))
     }
 
     fn primary(&mut self) -> Expr {
-        let Some(expr) = self.stream
-            .next_if::<LitInt>()
-            .map(|i| Expr::from(i.clone()))
-            .or(self
-                .stream
-                .next_if::<LitBool>()
-                .map(|i| Expr::from(i.clone())))
-            .or(self
-                .stream
-                .next_if::<LitStr>()
-                .map(|i| Expr::from(i.clone())))
-            .or(self
-                .stream
-                .next_if::<LitChar>()
-                .map(|i| Expr::from(i.clone())))
-            .or(self
-                .stream
-                .next_if::<Ident>()
-                .map(|i| Expr::from(i.clone()))) else {
+        let Some(expr) = self.expr_next_if::<LitInt>()
+            .or(self.expr_next_if::<LitBool>())
+            .or(self.expr_next_if::<LitStr>())
+            .or(self.expr_next_if::<LitChar>())
+            .or(self.expr_next_if::<Ident>()) else {
                 // TODO: make this report an error
                 panic!("unknown expression '{:?}'", self.stream.peek_blind());
         };
