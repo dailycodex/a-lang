@@ -378,6 +378,7 @@ mod tests {
                     lhs: Reg(0),
                     rhs: Reg(3),
                 }.into(),
+                DefLabel(".exit".into()).into(),
                 Leave.into(),
             ],
 
@@ -400,6 +401,7 @@ mod tests {
                     lhs: Reg(0),
                     rhs: Reg(1),
                 }.into(),
+                DefLabel(".exit".into()).into(),
                 Leave.into(),
             ],
 
@@ -423,6 +425,7 @@ mod tests {
                     lhs: Reg(0),
                     rhs: Reg(1),
                 }.into(),
+                DefLabel(".exit".into()).into(),
                 Leave.into(),
             ],
 
@@ -440,6 +443,7 @@ mod tests {
                     args: vec![Reg(0), Reg(1)],
                     ret: Reg(1000),
                 }.into(),
+                DefLabel(".exit".into()).into(),
                 Leave.into(),
             ],
 

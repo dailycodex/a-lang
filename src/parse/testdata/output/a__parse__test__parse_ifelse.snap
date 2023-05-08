@@ -1,0 +1,13 @@
+---
+source: src/parse/test.rs
+expression: ast_string
+---
+(func main <NULL> () (if (> 1 3) {
+    (return (+ 1 4))
+
+} else {
+    (return (+ 100 2))
+
+};)
+)
+
