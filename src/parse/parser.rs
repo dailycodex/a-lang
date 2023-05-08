@@ -2,12 +2,14 @@
 use super::{
     keyword, CtrlColon, CtrlComma, CtrlDot, CtrlLBrace, CtrlLBracet, CtrlLParan, CtrlRBrace,
     CtrlRBracet, CtrlRParan, CtrlRightArrow, CtrlSemiColon, CtrlSlash, CtrlStar,
-    CtrlThickRightArrow, Expr, ExprBinary, ExprBlock, ExprCall, ExprIf, ExprLit, ExprVar, Ident,
-    Item, ItemFn, Lit, LitBool, LitChar, LitInt, LitStr, Op, OpAdd, OpDiv, OpEqual, OpEqualEqual,
-    OpGeq, OpGrt, OpLeq, OpLes, OpMul, OpNeq, OpNot, OpSub, Param, Statement, Type,
+    CtrlThickRightArrow, Expr, ExprBinary, ExprBlock, ExprReturn, ExprCall, ExprIf,
+    ExprLit, ExprVar, Ident, Item, ItemFn, Lit, LitBool, LitChar, LitInt, LitStr,
+    Op, OpAdd, OpDiv, OpEqual, OpEqualEqual, OpGeq, OpGrt, OpLeq, OpLes, OpMul,
+    OpNeq, OpNot, OpSub, Param, Statement, Type
 };
 
 use crate::lexer::{Span, Token, TokenStream};
+type PResult<T> = std::result::Result<T, String>;
 
 pub struct Parser {
     stream: TokenStream,
@@ -61,15 +63,15 @@ impl Parser {
             .map(|i| Expr::from(i))
     }
 
-    fn program(&mut self) -> Result<Item, String> {
+    fn program(&mut self) -> PResult<Item> {
         self.declaration()
     }
 
-    fn declaration(&mut self) -> Result<Item, String> {
+    fn declaration(&mut self) -> PResult<Item> {
         self.item_fn()
     }
 
-    fn item_fn(&mut self) -> Result<Item, String> {
+    fn item_fn(&mut self) -> PResult<Item> {
         let keyword_fn = self
             .stream
             .next_if::<keyword::Fn>()
@@ -88,7 +90,7 @@ impl Parser {
         )))
     }
 
-    fn ret_type(&mut self) -> Result<Option<Type>, String> {
+    fn ret_type(&mut self) -> PResult<Option<Type>> {
         let Some(_) = self.stream.next_if::<CtrlRightArrow>() else {
             return Ok(None);
         };
@@ -98,7 +100,7 @@ impl Parser {
         Ok(Some(t.into()))
     }
 
-    fn params(&mut self) -> Result<Vec<Param>, String> {
+    fn params(&mut self) -> PResult<Vec<Param>> {
         self.stream
             .next_if::<CtrlLParan>()
             .ok_or::<String>("expected '('".into())?;
@@ -132,7 +134,7 @@ impl Parser {
         Ok(params)
     }
 
-    fn block(&mut self) -> Result<ExprBlock, String> {
+    fn block(&mut self) -> PResult<ExprBlock> {
         let left_brace = self
             .stream
             .next_if::<CtrlLBrace>()
@@ -151,13 +153,24 @@ impl Parser {
         Ok(ExprBlock::new(left_brace, right_brace, stmts))
     }
 
-    fn statement(&mut self) -> Result<Statement, String> {
-        let stmt = self.expression();
+    fn statement(&mut self) -> PResult<Statement> {
+        let stmt = self.expr_return()?;
         let span = stmt.span();
         self.stream
             .next_if::<CtrlSemiColon>()
             .ok_or::<String>("statements end in ';'".into())?;
         Ok(Statement { stmt, span })
+    }
+
+    fn expr_return(&mut self) -> PResult<Expr> {
+        let ret = self.stream
+            .next_if::<keyword::Return>()
+            .copied();
+        let Some(ret) = ret else {
+            return Ok(self.expression());
+        };
+        let expr = self.expression();
+        Ok(ExprReturn::new(ret, expr).into())
     }
 
     fn expression(&mut self) -> Expr {

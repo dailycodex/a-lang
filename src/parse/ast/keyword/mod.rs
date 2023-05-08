@@ -1,6 +1,6 @@
 macro_rules! keyword {
     ($name:ident) => {
-        #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
+        #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
         pub struct $name(pub crate::lexer::Span);
 
         impl crate::lexer::Token for $name {
@@ -15,6 +15,11 @@ macro_rules! keyword {
             }
             fn as_any(&self) -> &dyn std::any::Any {
                 self
+            }
+        }
+        impl std::fmt::Display for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "{}", stringify!($name).to_lowercase())
             }
         }
     };

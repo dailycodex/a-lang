@@ -28,6 +28,26 @@ where
     }
 }
 
+fn print_output_asm(output: bool) -> impl FnOnce(String) -> Result<String, Vec<String>> {
+    move |t: String| {
+        if output {
+            for line in t.lines() {
+                eprintln!("{line}");
+            }
+        }
+        Ok(t)
+    }
+}
+
+fn print_error_message(err: Vec<String>) -> Vec<String>{
+    for e in err.iter() {
+        eprintln!("{e}");
+    }
+    err
+}
+
+
+
 fn compile(flags: Flags) -> Result<(), Vec<String>> {
     std::fs::read_to_string(&flags.filename)
         .map_err(|e| vec![e.to_string()])
@@ -40,18 +60,11 @@ fn compile(flags: Flags) -> Result<(), Vec<String>> {
         .and_then(x86_64_linux::compile_ir_code)
         .and_then(print_output(flags.debug_asm))
         .and_then(x86_64_linux::instruction_to_string)
-        .and_then(|string| {
-            if flags.debug_asm {
-                for line in string.lines() {
-                    eprintln!("{line}");
-                }
-            }
-            Ok(string)
-        })
-        .and_then(|asm| Ok((flags.filename, asm)))
+        .and_then(print_output_asm(flags.debug_asm))
+        .map(|asm| (flags.filename, asm))
         .and_then(write_asm_to_file)
         .and_then(compile_asm_with_fasm)
-        .map_err(|err| dbg!(err))
+        .map_err(print_error_message)
 }
 
 fn write_asm_to_file((filename, asm_code): (String, String)) -> Result<String, Vec<String>> {
@@ -71,7 +84,7 @@ entry _start
 {asm_code}
 
 _start:
-  call __main__
+  call main__
   mov rdi, rax
   mov rax, 60
   syscall

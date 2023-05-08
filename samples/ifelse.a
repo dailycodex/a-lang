@@ -1,5 +1,6 @@
 fn main() {
   if true {
-    1 + 4;
+    return 1 + 4;
   };
+  return 20;
 }

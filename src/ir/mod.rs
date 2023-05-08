@@ -11,7 +11,7 @@ use crate::parse::{
     CtrlRParan, CtrlRightArrow, CtrlSemiColon, CtrlSlash, CtrlStar, CtrlThickRightArrow, Expr,
     ExprBinary, ExprBlock, ExprCall, ExprIf, ExprLit, ExprVar, Ident, Item, ItemFn, Lit, LitBool,
     LitChar, LitInt, LitStr, Op, OpAdd, OpDiv, OpEqual, OpEqualEqual, OpGeq, OpGrt, OpLeq, OpLes,
-    OpMul, OpNeq, OpNot, OpSub, Param, Statement, Type as PType,
+    OpMul, OpNeq, OpNot, OpSub, Param, Statement, Type as PType, ExprReturn,
 };
 
 pub fn code_gen(ast: Vec<Item>) -> Result<Vec<Instruction>, Vec<String>> {
@@ -35,6 +35,18 @@ impl From<&Ident> for Label {
     }
 }
 
+impl From<&str> for Label {
+    fn from(value: &str) -> Self {
+        Label(value.to_string())
+    }
+}
+
+impl From<String> for Label {
+    fn from(value: String) -> Self {
+        Label(value)
+    }
+}
+
 #[derive(Debug, Hash, Clone, Copy, PartialEq, Eq)]
 pub struct Reg(pub usize);
 
@@ -51,6 +63,7 @@ impl From<u64> for Imm {
 
 trait Ir {
     fn def_label(&mut self, label: Label);
+    fn jump(&mut self, label: Label);
     fn load_imm(&mut self, imm: Imm) -> Reg;
     fn binary(&mut self, op: &Op, lhs: Reg, rhs: Reg) -> Reg;
     fn conditional(&mut self, label: Label, reg: Reg) -> Reg;
@@ -68,6 +81,13 @@ trait AstVisitor: Ir {
     fn visit_lit_bool(&mut self, lit_bool: &LitBool) -> Reg;
 
     fn visit_expr_if(&mut self, expr_if: &ExprIf) -> Reg;
+
+    fn visit_expr_return(&mut self, expr_ret: &ExprReturn) -> Reg {
+        let ExprReturn { expr, .. } = expr_ret;
+        let reg = self.visit_expr(expr);
+        self.jump(".exit".into());
+        reg
+    }
 
     fn visit_lit(&mut self, lit: &Lit) -> Reg {
         match lit {
@@ -90,21 +110,28 @@ trait AstVisitor: Ir {
             Expr::Call(ref ecall) => self.visit_expr_call(ecall),
             Expr::Var(evar) => self.visit_expr_var(evar),
             Expr::If(eif) => self.visit_expr_if(eif),
-            Expr::Block(eblock) => unimplemented!("Block is not implemented ir for code gen"),
+            Expr::Block(eblock) => self.visit_expr_block(eblock),
+            Expr::Return(ereturn) => self.visit_expr_return(ereturn),
         }
     }
 
-    fn visit_stmt(&mut self, stmt: &Statement) {
+    fn visit_stmt(&mut self, stmt: &Statement) -> Reg {
         let Statement { stmt, .. } = stmt;
-        self.visit_expr(stmt);
+        self.visit_expr(stmt)
     }
 
-    fn visit_expr_block(&mut self, block: &ExprBlock) {
+    fn visit_expr_block(&mut self, block: &ExprBlock) -> Reg {
         // FIXME: This should return a Reg if we keep the current pattern
+        let mut reg: Option<Reg> = None;
         for stmt in block.stmts.iter() {
-            self.visit_stmt(stmt);
+            reg = Some(self.visit_stmt(stmt));
         }
+        let Some(reg) = reg else {
+            panic!("WHAT DO I DO HERE!");
+        };
+        reg
     }
+
 
     fn visit(&mut self, items: &[Item]) {
         for item in items.iter() {
@@ -154,6 +181,10 @@ impl Ir for IrGenerator {
 
     fn def_label(&mut self, label: Label) {
         let instruction: Instruction = DefLabel(label).into();
+        self.push_to_block(instruction);
+    }
+    fn jump(&mut self, label: Label) {
+        let instruction: Instruction = Jump(label).into();
         self.push_to_block(instruction);
     }
 
@@ -248,7 +279,9 @@ impl AstVisitor for IrGenerator {
 
         self.push_to_block(Enter);
         self.visit_expr_block(&block);
+        self.def_label(".exit".into());
         self.push_to_block(Leave);
+
         let body = self.block.clone();
         self.block.clear();
         self.push_fn(DefFunc {

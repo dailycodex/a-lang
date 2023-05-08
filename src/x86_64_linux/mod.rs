@@ -56,10 +56,10 @@ impl fmt::Display for Instruction {
             Self::Sub(des, reg) => write!(f, "  sub  {des},    {reg}\n"),
             Self::Mul(des, reg) => write!(f, "  imul {des},    {reg}\n"),
             Self::Div(des, reg) => write!(f, "  idiv {des},    {reg}\n"),
-            Self::DefLabel(name) => write!(f, "__{}__:\n", name),
-            Self::Call(name) => write!(f, "  call __{}__\n", name),
-            Self::Jump(name) => write!(f, "  jmp __{}__\n", name),
-            Self::JumpZero(name) => write!(f, "  jz __{}__\n", name),
+            Self::DefLabel(name) => write!(f, "{}__:\n", name),
+            Self::Call(name) => write!(f, "  call {}__\n", name),
+            Self::Jump(name) => write!(f, "  jmp {}__\n", name),
+            Self::JumpZero(name) => write!(f, "  jz {}__\n", name),
             Self::Cmp(lhs, rhs) => write!(f, "  cmp {lhs}, {rhs}\n"),
             Self::Test(lhs, rhs) => write!(f, "  test {lhs}, {rhs}\n"),
             Self::ProLog => write!(f, "  push rbp\n  mov  rbp,    rsp\n"),
@@ -192,7 +192,7 @@ impl Compile for ir::Conditional {
 // Jump(Jump),
 impl Compile for ir::Jump {
     fn compile(&self, state: &mut RegState) -> Vec<Instruction> {
-        vec![Instruction::Jump(self.label.0.to_string())]
+        vec![Instruction::Jump(self.name())]
     }
 }
 // DefLabel(DefLabel),

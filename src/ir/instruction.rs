@@ -115,13 +115,11 @@ pub struct Call {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Jump {
-    pub label: Label,
-}
+pub struct Jump(pub Label);
 
 impl Jump {
     pub fn name(&self) -> String {
-        self.label.0.to_string()
+        self.0.to_string()
     }
 }
 

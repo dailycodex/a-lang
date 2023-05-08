@@ -1,4 +1,4 @@
-use super::{Ident, Lit, Op};
+use super::{Ident, Lit, Op, keyword};
 use crate::lexer::{Span, Token};
 use std::fmt;
 
@@ -10,6 +10,7 @@ pub enum Expr {
     Var(ExprVar),
     If(ExprIf),
     Block(ExprBlock),
+    Return(ExprReturn),
 }
 
 impl fmt::Display for Expr {
@@ -21,6 +22,7 @@ impl fmt::Display for Expr {
             Self::Var(evar) => write!(f, "{evar}"),
             Self::If(i) => write!(f, "{i}"),
             Self::Block(i) => write!(f, "{i}"),
+            Self::Return(i) => write!(f, "{i}"),
         }
     }
 }
@@ -34,6 +36,7 @@ impl Expr {
             Self::Var(i) => i.span(),
             Self::If(i) => i.span(),
             Self::Block(i) => i.span(),
+            Self::Return(i) => i.span(),
         }
     }
 }
@@ -109,6 +112,12 @@ impl From<ExprIf> for Expr {
 impl From<ExprBlock> for Expr {
     fn from(expr: ExprBlock) -> Self {
         Self::Block(expr)
+    }
+}
+
+impl From<ExprReturn> for Expr {
+    fn from(expr: ExprReturn) -> Self {
+        Self::Return(expr)
     }
 }
 
@@ -235,6 +244,7 @@ pub struct ExprIf {
     pub else_branch: Option<(super::keyword::Else, Box<Expr>)>,
 }
 
+// TODO: implement display for ExprIf
 impl fmt::Display for ExprIf {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "if unimplemented display")
@@ -301,5 +311,33 @@ impl ExprBlock {
         let start = self.left_brace.span();
         let end = self.right_brace.span();
         Span::from((start, end))
+    }
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub struct ExprReturn{
+    pub ret: keyword::Return,
+    pub expr: Box<Expr>,
+}
+
+impl ExprReturn {
+    pub fn new(ret: keyword::Return, expr: Expr) -> Self {
+        Self{
+            ret,
+            expr: Box::new(expr)
+        }
+    }
+
+    pub fn span(&self) -> Span {
+        let start = self.ret.span();
+        let end = self.expr.span();
+        Span::from((start, end))
+    }
+}
+
+impl std::fmt::Display for ExprReturn {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self { ret, expr } = self;
+        write!(f, "{ret} {expr}")
     }
 }
