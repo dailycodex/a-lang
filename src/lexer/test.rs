@@ -1,6 +1,4 @@
-use super::*;
 use crate::lexer::lex;
-use pretty_assertions::assert_eq;
 
 pub fn snapshot_lexing(input: &str) -> String {
     let tokens = match lex(input) {

@@ -84,9 +84,9 @@ entry _start
 {asm_code}
 
 _start:
-  call main__
-  mov rdi, rax
-  mov rax, 60
+  call  main__
+  mov   rdi,    rax
+  mov   rax,    60
   syscall
 
 segment readable writable

@@ -68,6 +68,7 @@ trait Ir {
     fn binary(&mut self, op: &Op, lhs: Reg, rhs: Reg) -> Reg;
     fn conditional(&mut self, label: Label, reg: Reg) -> Reg;
     fn call(&mut self, label: Label, args: Vec<Reg>, ret: Reg) -> Reg;
+    fn early_return(&mut self, reg: Reg) -> Reg;
 }
 
 trait AstVisitor: Ir {
@@ -85,6 +86,7 @@ trait AstVisitor: Ir {
     fn visit_expr_return(&mut self, expr_ret: &ExprReturn) -> Reg {
         let ExprReturn { expr, .. } = expr_ret;
         let reg = self.visit_expr(expr);
+        self.early_return(reg);
         self.jump(".exit".into());
         reg
     }
@@ -221,6 +223,11 @@ impl Ir for IrGenerator {
         let instruction: Instruction = Call { caller, args, ret }.into();
         self.push_to_block(instruction);
         ret
+    }
+    fn early_return(&mut self, reg: Reg) -> Reg {
+        let instruction: Instruction = Return(reg).into();
+        self.push_to_block(instruction);
+        reg
     }
 }
 

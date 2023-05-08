@@ -19,6 +19,7 @@ pub enum Instruction {
     Jump(Jump),
     DefLabel(DefLabel),
     Call(Call),
+    Return(Return),
     Enter(Enter),
     Leave(Leave),
 }
@@ -56,6 +57,7 @@ from_to!(Conditional, Instruction);
 from_to!(Jump, Instruction);
 from_to!(DefLabel, Instruction);
 from_to!(Call, Instruction);
+from_to!(Return, Instruction);
 from_to!(Enter, Instruction);
 from_to!(Leave, Instruction);
 
@@ -131,6 +133,9 @@ impl DefLabel {
         self.0.0.to_string()
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Return(pub Reg);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Enter;

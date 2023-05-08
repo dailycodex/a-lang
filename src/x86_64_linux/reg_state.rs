@@ -73,15 +73,16 @@ impl RegState {
     }
 
     pub fn get_ret_reg(&mut self) -> X86Reg {
-        self.ret
-            .iter_mut()
-            .enumerate()
-            .find(|(_, r)| !**r)
-            .and_then(|(i, r)| {
-                *r = true;
-                Some(X86RegRet::from(i).into())
-            })
-            .unwrap()
+        X86RegRet::RAX.into()
+        // self.ret
+        //     .iter_mut()
+        //     .enumerate()
+        //     .find(|(_, r)| !**r)
+        //     .and_then(|(i, r)| {
+        //         *r = true;
+        //         Some(X86RegRet::from(i).into())
+        //     })
+        //     .unwrap_or(X86RegRet::RAX.into())
     }
 
     pub fn last_used_reg(&self) -> X86Reg {
