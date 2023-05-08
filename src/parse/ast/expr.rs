@@ -1,4 +1,4 @@
-use super::{Ident, Lit, Op, keyword};
+use super::{keyword, Ident, Lit, Op};
 use crate::lexer::{Span, Token};
 use std::fmt;
 
@@ -315,16 +315,16 @@ impl ExprBlock {
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub struct ExprReturn{
+pub struct ExprReturn {
     pub ret: keyword::Return,
     pub expr: Box<Expr>,
 }
 
 impl ExprReturn {
     pub fn new(ret: keyword::Return, expr: Expr) -> Self {
-        Self{
+        Self {
             ret,
-            expr: Box::new(expr)
+            expr: Box::new(expr),
         }
     }
 

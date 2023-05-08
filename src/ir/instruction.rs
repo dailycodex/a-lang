@@ -108,7 +108,6 @@ pub struct Conditional {
     pub reg: Reg,
 }
 
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Call {
     pub caller: Label,
@@ -130,7 +129,7 @@ pub struct DefLabel(pub Label);
 
 impl DefLabel {
     pub fn name(&self) -> String {
-        self.0.0.to_string()
+        self.0 .0.to_string()
     }
 }
 

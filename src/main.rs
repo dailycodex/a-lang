@@ -39,14 +39,12 @@ fn print_output_asm(output: bool) -> impl FnOnce(String) -> Result<String, Vec<S
     }
 }
 
-fn print_error_message(err: Vec<String>) -> Vec<String>{
+fn print_error_message(err: Vec<String>) -> Vec<String> {
     for e in err.iter() {
         eprintln!("{e}");
     }
     err
 }
-
-
 
 fn compile(flags: Flags) -> Result<(), Vec<String>> {
     std::fs::read_to_string(&flags.filename)

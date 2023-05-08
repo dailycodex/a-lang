@@ -50,20 +50,20 @@ pub enum Instruction {
 impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::MoveImm(des, value)=> write!(f, "  mov   {des},    {value}\n"),
-            Self::MoveReg(des, src)  => write!(f, "  mov   {des},    {src}\n"),
-            Self::Add(des, reg)      => write!(f, "  add   {des},    {reg}\n"),
-            Self::Sub(des, reg)      => write!(f, "  sub   {des},    {reg}\n"),
-            Self::Mul(des, reg)      => write!(f, "  imul  {des},    {reg}\n"),
-            Self::Div(des, reg)      => write!(f, "  idiv  {des},    {reg}\n"),
-            Self::DefLabel(name)     => write!(f, "{}__:\n", name),
-            Self::Call(name)         => write!(f, "  call  {}__\n", name),
-            Self::Jump(name)         => write!(f, "  jmp   {}__\n", name),
-            Self::JumpZero(name)     => write!(f, "  jz    {}__\n", name),
-            Self::Cmp(lhs, rhs)      => write!(f, "  cmp   {lhs},   {rhs}\n"),
-            Self::Test(lhs, rhs)     => write!(f, "  test  {lhs},   {rhs}\n"),
-            Self::ProLog             => write!(f, "  push  rbp\n  mov   rbp,    rsp\n"),
-            Self::Epilog             => write!(f, "  mov   rsp,    rbp\n  pop   rbp\n  ret\n"),
+            Self::MoveImm(des, value) => write!(f, "  mov   {des},    {value}\n"),
+            Self::MoveReg(des, src) => write!(f, "  mov   {des},    {src}\n"),
+            Self::Add(des, reg) => write!(f, "  add   {des},    {reg}\n"),
+            Self::Sub(des, reg) => write!(f, "  sub   {des},    {reg}\n"),
+            Self::Mul(des, reg) => write!(f, "  imul  {des},    {reg}\n"),
+            Self::Div(des, reg) => write!(f, "  idiv  {des},    {reg}\n"),
+            Self::DefLabel(name) => write!(f, "{}__:\n", name),
+            Self::Call(name) => write!(f, "  call  {}__\n", name),
+            Self::Jump(name) => write!(f, "  jmp   {}__\n", name),
+            Self::JumpZero(name) => write!(f, "  jz    {}__\n", name),
+            Self::Cmp(lhs, rhs) => write!(f, "  cmp   {lhs},   {rhs}\n"),
+            Self::Test(lhs, rhs) => write!(f, "  test  {lhs},   {rhs}\n"),
+            Self::ProLog => write!(f, "  push  rbp\n  mov   rbp,    rsp\n"),
+            Self::Epilog => write!(f, "  mov   rsp,    rbp\n  pop   rbp\n  ret\n"),
         }
     }
 }
@@ -215,9 +215,7 @@ impl Compile for ir::Return {
     fn compile(&self, state: &mut RegState) -> Vec<Instruction> {
         let reg = state.get_reg(&self.0);
         let ret = state.get_ret_reg();
-        vec![
-            Instruction::MoveReg(ret, reg),
-        ]
+        vec![Instruction::MoveReg(ret, reg)]
     }
 }
 

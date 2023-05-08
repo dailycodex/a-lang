@@ -9,9 +9,9 @@ use crate::lexer::*;
 use crate::parse::{
     CtrlColon, CtrlComma, CtrlDot, CtrlLBrace, CtrlLBracet, CtrlLParan, CtrlRBrace, CtrlRBracet,
     CtrlRParan, CtrlRightArrow, CtrlSemiColon, CtrlSlash, CtrlStar, CtrlThickRightArrow, Expr,
-    ExprBinary, ExprBlock, ExprCall, ExprIf, ExprLit, ExprVar, Ident, Item, ItemFn, Lit, LitBool,
-    LitChar, LitInt, LitStr, Op, OpAdd, OpDiv, OpEqual, OpEqualEqual, OpGeq, OpGrt, OpLeq, OpLes,
-    OpMul, OpNeq, OpNot, OpSub, Param, Statement, Type as PType, ExprReturn,
+    ExprBinary, ExprBlock, ExprCall, ExprIf, ExprLit, ExprReturn, ExprVar, Ident, Item, ItemFn,
+    Lit, LitBool, LitChar, LitInt, LitStr, Op, OpAdd, OpDiv, OpEqual, OpEqualEqual, OpGeq, OpGrt,
+    OpLeq, OpLes, OpMul, OpNeq, OpNot, OpSub, Param, Statement, Type as PType,
 };
 
 pub fn code_gen(ast: Vec<Item>) -> Result<Vec<Instruction>, Vec<String>> {
@@ -134,7 +134,6 @@ trait AstVisitor: Ir {
         reg
     }
 
-
     fn visit(&mut self, items: &[Item]) {
         for item in items.iter() {
             match item {
@@ -180,7 +179,6 @@ impl IrGenerator {
 }
 
 impl Ir for IrGenerator {
-
     fn def_label(&mut self, label: Label) {
         let instruction: Instruction = DefLabel(label).into();
         self.push_to_block(instruction);
@@ -211,10 +209,7 @@ impl Ir for IrGenerator {
     }
 
     fn conditional(&mut self, label: Label, reg: Reg) -> Reg {
-        let instruction: Instruction = Conditional {
-            reg,
-            label,
-        }.into();
+        let instruction: Instruction = Conditional { reg, label }.into();
         self.push_to_block(instruction);
         reg
     }

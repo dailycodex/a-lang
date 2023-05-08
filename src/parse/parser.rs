@@ -2,10 +2,9 @@
 use super::{
     keyword, CtrlColon, CtrlComma, CtrlDot, CtrlLBrace, CtrlLBracet, CtrlLParan, CtrlRBrace,
     CtrlRBracet, CtrlRParan, CtrlRightArrow, CtrlSemiColon, CtrlSlash, CtrlStar,
-    CtrlThickRightArrow, Expr, ExprBinary, ExprBlock, ExprReturn, ExprCall, ExprIf,
-    ExprLit, ExprVar, Ident, Item, ItemFn, Lit, LitBool, LitChar, LitInt, LitStr,
-    Op, OpAdd, OpDiv, OpEqual, OpEqualEqual, OpGeq, OpGrt, OpLeq, OpLes, OpMul,
-    OpNeq, OpNot, OpSub, Param, Statement, Type
+    CtrlThickRightArrow, Expr, ExprBinary, ExprBlock, ExprCall, ExprIf, ExprLit, ExprReturn,
+    ExprVar, Ident, Item, ItemFn, Lit, LitBool, LitChar, LitInt, LitStr, Op, OpAdd, OpDiv, OpEqual,
+    OpEqualEqual, OpGeq, OpGrt, OpLeq, OpLes, OpMul, OpNeq, OpNot, OpSub, Param, Statement, Type,
 };
 
 use crate::lexer::{Span, Token, TokenStream};
@@ -163,9 +162,7 @@ impl Parser {
     }
 
     fn expr_return(&mut self) -> PResult<Expr> {
-        let ret = self.stream
-            .next_if::<keyword::Return>()
-            .copied();
+        let ret = self.stream.next_if::<keyword::Return>().copied();
         let Some(ret) = ret else {
             return Ok(self.expression());
         };
