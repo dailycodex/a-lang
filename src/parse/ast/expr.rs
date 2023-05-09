@@ -247,8 +247,13 @@ pub struct ExprIf {
 // TODO: implement display for ExprIf
 impl fmt::Display for ExprIf {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let Self { if_token, cond, then_branch, else_branch } = self;
-        let r#else = if let Some((_, eb)) = else_branch { 
+        let Self {
+            if_token,
+            cond,
+            then_branch,
+            else_branch,
+        } = self;
+        let r#else = if let Some((_, eb)) = else_branch {
             format!(" else {{\n    {eb}\n}};")
         } else {
             ";".into()
