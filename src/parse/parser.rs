@@ -1,6 +1,6 @@
 #![allow(unused)]
 use super::{
-    keyword, CtrlColon, CtrlComma, CtrlDot, CtrlLBrace, CtrlLBracet, CtrlLParan, CtrlRBrace,
+    keyword, Ctrl, CtrlColon, CtrlComma, CtrlDot, CtrlLBrace, CtrlLBracet, CtrlLParan, CtrlRBrace,
     CtrlRBracet, CtrlRParan, CtrlRightArrow, CtrlSemiColon, CtrlSlash, CtrlStar,
     CtrlThickRightArrow, Expr, ExprBinary, ExprBlock, ExprCall, ExprIf, ExprLit, ExprReturn,
     ExprVar, Ident, Item, ItemFn, Lit, LitBool, LitChar, LitInt, LitStr, Op, OpAdd, OpDiv, OpEqual,
@@ -42,6 +42,8 @@ impl Parser {
                 }
                 Err(error) => {
                     self.errors.push(error);
+                    self.recover();
+                    let msg = format!("{:?}", self.errors.last());
                 }
             }
         }
@@ -49,6 +51,23 @@ impl Parser {
             return Err(self.errors);
         }
         Ok(ast)
+    }
+
+    fn recover(&mut self) {
+        let Some(error) = self.errors.last() else {
+            return;
+        };
+        match error.as_str() {
+            "expected fn" => {},
+            "expected a ident" => {},
+            "expected return type" => {},
+            "expected '('" => {},
+            "expected ':' after function param id" => {},
+            "expected '{'" => {},
+            "expected '}'" => {},
+            "functions params end with ')'" => {},
+            _ => {},
+        }
     }
 
     fn expr_next_if<Expected>(&mut self) -> Option<Expr>
@@ -60,6 +79,26 @@ impl Parser {
             .next_if::<Expected>()
             .cloned()
             .map(|i| Expr::from(i))
+    }
+
+    pub fn op_next_if<Expected>(&mut self) -> Option<Op>
+    where
+        Expected: Token + Clone,
+        Op: From<Expected>,
+    {
+        self.stream
+            .next_if::<Expected>()
+            .map(|i| Op::from((*i).clone()))
+    }
+
+    pub fn ctrl_next_if<Expected>(&mut self) -> Option<Ctrl>
+    where
+        Expected: Token + Clone,
+        Ctrl: From<Expected>,
+    {
+        self.stream
+            .next_if::<Expected>()
+            .map(|i| Ctrl::from((*i).clone()))
     }
 
     fn program(&mut self) -> PResult<Item> {
@@ -104,24 +143,18 @@ impl Parser {
             .next_if::<CtrlLParan>()
             .ok_or::<String>("expected '('".into())?;
         let mut params = vec![];
-        loop {
-            if self.stream.is_peek_a::<CtrlRParan>() {
+        while self.stream.is_peek_a::<CtrlRParan>() {
+            let Some(name) = self.stream.next_if::<Ident>().cloned() else {
                 break;
-            }
-            let name = match self.stream.next_if::<Ident>() {
-                Some(t) => t.clone(),
-                None => break,
             };
 
-            self.stream
-                .next_if::<CtrlColon>()
+            self.ctrl_next_if::<CtrlColon>()
                 .ok_or::<String>("expected ':' after function param id".into())?;
 
-            let kind = match self.stream.next_if::<Ident>() {
-                Some(t) => t,
-                None => break,
+            let Some(kind) = self.stream.next_if::<Ident>().cloned() else {
+                break;
             };
-            params.push((&name, kind).into());
+            params.push((&name, &kind).into());
             if let None = self.stream.next_if::<CtrlComma>() {
                 break;
             }
@@ -208,58 +241,34 @@ impl Parser {
 
     fn comparison(&mut self) -> Expr {
         let mut expr = self.term();
-        loop {
-            let op = self
-                .stream
-                .next_if::<OpGrt>()
-                .map(|i| (*i).clone().into())
-                .or(self.stream.next_if::<OpLes>().map(|i| (*i).clone().into()))
-                .or(self.stream.next_if::<OpGeq>().map(|i| (*i).clone().into()))
-                .or(self.stream.next_if::<OpLeq>().map(|i| (*i).clone().into()))
-                .or(self
-                    .stream
-                    .next_if::<OpEqualEqual>()
-                    .map(|i| (*i).clone().into()))
-                .or(self.stream.next_if::<OpNeq>().map(|i| (*i).clone().into()));
-            if op.is_none() {
-                break;
-            }
+        while let Some(op) = self
+            .op_next_if::<OpGrt>()
+            .or(self.op_next_if::<OpLes>())
+            .or(self.op_next_if::<OpGeq>())
+            .or(self.op_next_if::<OpLeq>())
+            .or(self.op_next_if::<OpEqualEqual>())
+            .or(self.op_next_if::<OpNeq>())
+        {
             let right = self.term();
-            expr = Expr::from(ExprBinary::from((expr, right, op.unwrap())))
+            expr = Expr::from(ExprBinary::from((expr, right, op)))
         }
         expr
     }
 
     fn term(&mut self) -> Expr {
         let mut expr = self.factor();
-        loop {
-            let op = self
-                .stream
-                .next_if::<OpSub>()
-                .map(|i| (*i).clone().into())
-                .or(self.stream.next_if::<OpAdd>().map(|i| (*i).clone().into()));
-            if op.is_none() {
-                break;
-            }
+        while let Some(op) = self.op_next_if::<OpSub>().or(self.op_next_if::<OpAdd>()) {
             let right = self.factor();
-            expr = Expr::from(ExprBinary::from((expr, right, op.unwrap())))
+            expr = Expr::from(ExprBinary::from((expr, right, op)))
         }
         expr
     }
 
     fn factor(&mut self) -> Expr {
         let mut expr = self.call();
-        loop {
-            let op = self
-                .stream
-                .next_if::<OpMul>()
-                .map(|i| (*i).clone().into())
-                .or(self.stream.next_if::<OpDiv>().map(|i| (*i).clone().into()));
-            if op.is_none() {
-                break;
-            }
+        while let Some(op) = self.op_next_if::<OpMul>().or(self.op_next_if::<OpDiv>()) {
             let right = self.call();
-            expr = Expr::from(ExprBinary::from((expr, right, op.unwrap())))
+            expr = Expr::from(ExprBinary::from((expr, right, op)))
         }
         expr
     }
@@ -267,10 +276,7 @@ impl Parser {
     fn call(&mut self) -> Expr {
         let mut expr = self.primary();
 
-        loop {
-            let Some(left_paran) = self.stream.next_if::<CtrlLParan>().cloned() else {
-                break;
-            };
+        if let Some(left_paran) = self.stream.next_if::<CtrlLParan>().cloned() {
             expr = self.finish_call(expr, left_paran);
         }
 
