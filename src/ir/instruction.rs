@@ -14,6 +14,7 @@ pub enum Instruction {
     Sub(Sub),
     Mul(Mul),
     Div(Div),
+    Grt(Grt),
     Copy(Copy),
     Conditional(Conditional),
     Jump(Jump),
@@ -81,6 +82,7 @@ op_instruction!(Add);
 op_instruction!(Sub);
 op_instruction!(Mul);
 op_instruction!(Div);
+op_instruction!(Grt);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DefFunc {
