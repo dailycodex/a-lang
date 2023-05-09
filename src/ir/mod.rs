@@ -202,6 +202,7 @@ impl Ir for IrGenerator {
             Op::Sub(_) => Sub { des, lhs, rhs }.into(),
             Op::Mul(_) => Mul { des, lhs, rhs }.into(),
             Op::Div(_) => Div { des, lhs, rhs }.into(),
+            Op::Grt(_) => Div { des, lhs, rhs }.into(),
             _ => unimplemented!("{op:?}"),
         };
         self.push_to_block(instruction);
