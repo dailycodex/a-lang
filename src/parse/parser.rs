@@ -58,15 +58,15 @@ impl Parser {
             return;
         };
         match error.as_str() {
-            "expected fn" => { },
-            "expected a ident" => {},
-            "expected return type" => {},
-            "expected '('" => {},
-            "expected ':' after function param id" => {},
-            "expected '{'" => {},
-            "expected '}'" => {},
-            "functions params end with ')'" => {},
-            _ => {},
+            "expected fn" => {}
+            "expected a ident" => {}
+            "expected return type" => {}
+            "expected '('" => {}
+            "expected ':' after function param id" => {}
+            "expected '{'" => {}
+            "expected '}'" => {}
+            "functions params end with ')'" => {}
+            _ => {}
         }
     }
 
