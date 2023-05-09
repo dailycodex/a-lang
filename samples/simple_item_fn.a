@@ -1,7 +1,7 @@
 fn add(x: u32, y: u32) -> u32 {
-  x + y;
+  return x + y;
 }
 
 fn main() {
-  add(1, 2);
+  return add(1, 2);
 }

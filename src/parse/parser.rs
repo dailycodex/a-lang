@@ -58,7 +58,7 @@ impl Parser {
             return;
         };
         match error.as_str() {
-            "expected fn" => {},
+            "expected fn" => { },
             "expected a ident" => {},
             "expected return type" => {},
             "expected '('" => {},
@@ -143,7 +143,7 @@ impl Parser {
             .next_if::<CtrlLParan>()
             .ok_or::<String>("expected '('".into())?;
         let mut params = vec![];
-        while self.stream.is_peek_a::<CtrlRParan>() {
+        while !self.stream.is_peek_a::<CtrlRParan>() {
             let Some(name) = self.stream.next_if::<Ident>().cloned() else {
                 break;
             };
@@ -155,9 +155,8 @@ impl Parser {
                 break;
             };
             params.push((&name, &kind).into());
-            if let None = self.stream.next_if::<CtrlComma>() {
-                break;
-            }
+            // grabs trailing commas.
+            self.stream.next_if::<CtrlComma>();
         }
 
         if self.stream.next_if::<CtrlRParan>().is_none() {
