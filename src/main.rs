@@ -72,12 +72,22 @@ fn write_asm_to_file((filename, asm_code): (String, String)) -> Result<String, V
     };
 
     let asm_file = format!("{filename}.asm");
+    let header = if cfg!(target_os = "windows") {
+        "format pe64 gui"
+    } else {
+        "format ELF64 executable 3
+segment readable executable
+"
+    };
+    let footer = if cfg!(target_os = "windows") {
+        ""
+    } else {
+        "segment readable writable"
+    };
     let code = format!(
         "
 
-format ELF64 executable 3
-segment readable executable
-
+{header}
 entry _start
 {asm_code}
 
@@ -86,8 +96,7 @@ _start:
   mov   rdi,    rax
   mov   rax,    60
   syscall
-
-segment readable writable
+{footer}
                        "
     );
 
@@ -97,7 +106,12 @@ segment readable writable
 }
 
 fn compile_asm_with_fasm(asm_file: String) -> Result<(), Vec<String>> {
-    Command::new("fasm")
+    let fasm = if cfg!(target_os = "windows") {
+        "./fasm"
+    } else {
+        "fasm"
+    };
+    Command::new(fasm)
         .arg(asm_file)
         .output()
         .and_then(|output| {
