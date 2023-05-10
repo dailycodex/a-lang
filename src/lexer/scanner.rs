@@ -184,33 +184,22 @@ impl<'a> Lexer<'a> {
             ':' => self.token::<CtrlColon>(":"),
             ';' => self.token::<CtrlSemiColon>(";"),
             // 'λ' => self.op_token("λ"),
-            '\n' | ' ' | '\0' => {
+            '\n' | '\r' | ' ' | '\0' => {
                 let ch = self.next();
                 self.span.reset(Some(self.last_chr_len));
                 self.parse(ch)
             }
-            _ => panic!(),
-            // '\0' => Token::Eof(self.span()),
-            // c => Token::Error(format!("unknown char '{}'", c), self.span()),
+            _ => panic!("unknown char {ch:?}"),
         }
     }
 
     pub fn lex(mut self) -> Result<Vec<Box<dyn Token>>, Vec<String>> {
         let mut tokens = vec![];
-        // let mut errors = vec![];
         while !self.is_end() {
             let ch = self.next();
             let token = self.parse(ch);
             tokens.push(token);
-            // if !token.is_err() {
-            //     tokens.push(token);
-            // } else {
-            //     errors.push(token.lexme().to_string())
-            // }
         }
-        // if !errors.is_empty() {
-        //     return Err(errors);
-        // }
         Ok(tokens)
     }
 }
