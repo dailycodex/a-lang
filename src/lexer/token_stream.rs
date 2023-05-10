@@ -1,4 +1,3 @@
-#![allow(unused)]
 use crate::lexer::Token;
 
 #[derive(Debug)]

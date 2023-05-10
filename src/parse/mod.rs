@@ -1,4 +1,3 @@
-#![allow(unused)]
 mod ast;
 mod parser;
 #[cfg(test)]

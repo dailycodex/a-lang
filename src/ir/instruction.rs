@@ -1,5 +1,4 @@
-#![allow(unused)]
-use super::{Imm, Label, Reg, Var};
+use super::{Imm, Label, Reg};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {

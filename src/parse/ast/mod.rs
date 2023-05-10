@@ -14,7 +14,7 @@ macro_rules! token {
         #[derive(Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
         pub struct $name {
             pub value: String,
-            pub span: crate::lexer::Span,
+            pub span: $crate::lexer::Span,
         }
 
         impl $name {

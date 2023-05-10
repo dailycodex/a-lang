@@ -1,4 +1,3 @@
-#![allow(unused)]
 use super::Span;
 use crate::parse::{
     keyword,

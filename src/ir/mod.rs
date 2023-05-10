@@ -1,4 +1,3 @@
-#![allow(unused)]
 mod instruction;
 use std::collections::HashMap;
 
@@ -7,11 +6,8 @@ pub use instruction::*;
 use crate::lexer::*;
 
 use crate::parse::{
-    CtrlColon, CtrlComma, CtrlDot, CtrlLBrace, CtrlLBracet, CtrlLParan, CtrlRBrace, CtrlRBracet,
-    CtrlRParan, CtrlRightArrow, CtrlSemiColon, CtrlSlash, CtrlStar, CtrlThickRightArrow, Expr,
-    ExprBinary, ExprBlock, ExprCall, ExprIf, ExprLit, ExprReturn, ExprVar, Ident, Item, ItemFn,
-    Lit, LitBool, LitChar, LitInt, LitStr, Op, OpAdd, OpDiv, OpEqual, OpEqualEqual, OpGeq, OpGrt,
-    OpLeq, OpLes, OpMul, OpNeq, OpNot, OpSub, Param, Statement, Type as PType,
+    Expr, ExprBinary, ExprBlock, ExprCall, ExprIf, ExprLit, ExprReturn, ExprVar, Ident, Item,
+    ItemFn, Lit, LitBool, LitInt, Op, Param, Statement,
 };
 
 pub fn code_gen(ast: Vec<Item>) -> Result<Vec<Instruction>, Vec<String>> {
