@@ -33,6 +33,7 @@ trait Compile {
 pub enum Instruction {
     MoveImm(X86Reg, u64),
     MoveReg(X86Reg, X86Reg),
+    MoveZx(X86Reg),
     Add(X86Reg, X86Reg),
     Sub(X86Reg, X86Reg),
     Mul(X86Reg, X86Reg),
@@ -43,6 +44,7 @@ pub enum Instruction {
     JumpZero(String),
     Cmp(X86Reg, X86Reg),
     Test(X86Reg, X86Reg),
+    SetG,
     ProLog,
     Epilog,
 }
@@ -52,6 +54,7 @@ impl fmt::Display for Instruction {
         match self {
             Self::MoveImm(des, value) => write!(f, "  mov   {des},    {value}\n"),
             Self::MoveReg(des, src) => write!(f, "  mov   {des},    {src}\n"),
+            Self::MoveZx(src) => write!(f, "  movzx {src},    al\n"),
             Self::Add(des, reg) => write!(f, "  add   {des},    {reg}\n"),
             Self::Sub(des, reg) => write!(f, "  sub   {des},    {reg}\n"),
             Self::Mul(des, reg) => write!(f, "  imul  {des},    {reg}\n"),
@@ -62,6 +65,7 @@ impl fmt::Display for Instruction {
             Self::JumpZero(name) => write!(f, "  jz    {}__\n", name),
             Self::Cmp(lhs, rhs) => write!(f, "  cmp   {lhs},   {rhs}\n"),
             Self::Test(lhs, rhs) => write!(f, "  test  {lhs},   {rhs}\n"),
+            Self::SetG => write!(f, "  setg   al\n"),
             Self::ProLog => write!(f, "  push  rbp\n  mov   rbp,    rsp\n"),
             Self::Epilog => write!(f, "  mov   rsp,    rbp\n  pop   rbp\n  ret\n"),
         }
@@ -77,6 +81,7 @@ impl Compile for ir::Instruction {
             ir::Instruction::Sub(i) => i.compile(state),
             ir::Instruction::Mul(i) => i.compile(state),
             ir::Instruction::Div(i) => i.compile(state),
+            ir::Instruction::Grt(i) => i.compile(state),
             ir::Instruction::Copy(i) => i.compile(state),
             ir::Instruction::Conditional(i) => i.compile(state),
             ir::Instruction::Jump(i) => i.compile(state),
@@ -175,7 +180,22 @@ impl Compile for ir::Div {
         vec![Instruction::MoveReg(des, lhs), Instruction::Div(des, rhs)]
     }
 }
-// Copy(Copy),
+
+impl Compile for ir::Grt {
+    fn compile(&self, state: &mut RegState) -> Vec<Instruction> {
+        let ir::Grt { des, lhs, rhs } = self;
+        let des = state.get_reg(des);
+        let lhs = state.get_reg(lhs);
+        let rhs = state.get_reg(rhs);
+        vec![
+            Instruction::MoveReg(des, lhs),
+            Instruction::Cmp(des, rhs),
+            Instruction::SetG,
+            Instruction::MoveZx(des),
+        ]
+    }
+}
+
 impl Compile for ir::Copy {
     fn compile(&self, state: &mut RegState) -> Vec<Instruction> {
         unimplemented!("{:?}", self)
