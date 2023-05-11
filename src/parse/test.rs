@@ -1,7 +1,3 @@
-use super::*;
-use crate::lexer::lex;
-use pretty_assertions::assert_eq;
-
 macro_rules! snapshot {
     ($name:tt, $path:tt) => {
         #[test]

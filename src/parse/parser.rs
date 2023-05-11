@@ -56,15 +56,15 @@ impl Parser {
             return;
         };
         match error.as_str() {
-            "expected fn" => {}
-            "expected a ident" => {}
-            "expected return type" => {}
-            "expected '('" => {}
-            "expected ':' after function param id" => {}
-            "expected '{'" => {}
-            "expected '}'" => {}
-            "functions params end with ')'" => {}
-            _ => {}
+            "expected fn" => unimplemented!("expected fn"),
+            "expected a ident" => unimplemented!("expected a ident"),
+            "expected return type" => unimplemented!("expected a ident"),
+            "expected '('" => unimplemented!("expected a ident"),
+            "expected ':' after function param id" => unimplemented!("expected a ident"),
+            "expected '{'" => unimplemented!("expected a ident"),
+            "expected '}'" => unimplemented!("expected a ident"),
+            "functions params end with ')'" => unimplemented!("expected a ident"),
+            _ => unimplemented!("{error}"),
         }
     }
 
