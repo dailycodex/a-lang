@@ -1,3 +1,4 @@
+#![warn(clippy::upper_case_acronyms)]
 use super::{X86Reg, X86RegParam, X86RegRet};
 use crate::ir::Reg;
 use std::collections::HashMap;
@@ -5,8 +6,8 @@ use std::collections::HashMap;
 #[derive(Debug, Default)]
 pub struct RegState {
     args: [bool; 6],
-    scratch: [bool; 9],
-    preserved: [bool; 7],
+    // _scratch: [bool; 9],
+    // _preserved: [bool; 7],
     ret: [bool; 2],
     in_use: HashMap<Reg, X86Reg>,
     last_used: Option<(Reg, X86Reg)>,
@@ -27,11 +28,11 @@ impl RegState {
             match r {
                 X86Reg::RegRet(reg) => self.ret[(*reg) as usize] = false,
                 X86Reg::RegParam(reg) => self.args[(*reg) as usize] = false,
-                X86Reg::Reg64(reg) => unreachable!(),
-                X86Reg::Reg32(reg) => unreachable!(),
-                X86Reg::Reg16(reg) => unreachable!(),
-                X86Reg::RegHigh8(reg) => unreachable!(),
-                X86Reg::RegLow8(reg) => unreachable!(),
+                X86Reg::Reg64(..) => unreachable!(),
+                X86Reg::Reg32(..) => unreachable!(),
+                X86Reg::Reg16(..) => unreachable!(),
+                X86Reg::RegHigh8(..) => unreachable!(),
+                X86Reg::RegLow8(..) => unreachable!(),
             }
             None::<X86Reg>
         });
@@ -51,25 +52,13 @@ impl RegState {
             .iter_mut()
             .enumerate()
             .find(|(_, r)| !**r)
-            .and_then(|(i, r)| {
+            .map(|(i, r)| {
                 *r = true;
-                Some(X86RegParam::from(i).into())
+                X86RegParam::from(i).into()
             })
             .unwrap();
         self.push_reg(reg, xreg);
         xreg
-    }
-
-    pub fn get_preserved_reg(&mut self, reg: &Reg) -> X86Reg {
-        self.args
-            .iter_mut()
-            .enumerate()
-            .find(|(_, r)| !**r)
-            .and_then(|(i, r)| {
-                *r = true;
-                Some(X86RegParam::from(i).into())
-            })
-            .unwrap()
     }
 
     pub fn get_ret_reg(&mut self) -> X86Reg {
@@ -83,9 +72,5 @@ impl RegState {
         //         Some(X86RegRet::from(i).into())
         //     })
         //     .unwrap_or(X86RegRet::RAX.into())
-    }
-
-    pub fn last_used_reg(&self) -> X86Reg {
-        self.last_used.unwrap().1
     }
 }

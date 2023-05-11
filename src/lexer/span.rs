@@ -1,4 +1,3 @@
-#![allow(unused)]
 use std::fmt;
 
 #[derive(Default, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -50,16 +49,9 @@ impl Span {
         self.col_start = self.col_end.saturating_sub(len);
     }
 
-    pub fn range(&self) -> std::ops::Range<usize> {
-        self.idx_start..self.idx_end
-    }
-
+    #[allow(unused)]
     pub fn len(&self) -> usize {
         self.idx_end - self.idx_start
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
     }
 }
 

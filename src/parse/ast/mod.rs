@@ -14,11 +14,12 @@ macro_rules! token {
         #[derive(Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
         pub struct $name {
             pub value: String,
-            pub span: crate::lexer::Span,
+            pub span: $crate::lexer::Span,
         }
 
         impl $name {
-            pub fn new(value: impl Into<String>, span: crate::lexer::Span) -> Self {
+            #[allow(unused)]
+            pub fn new(value: impl Into<String>, span: $crate::lexer::Span) -> Self {
                 Self {
                     value: value.into(),
                     span,
@@ -26,14 +27,14 @@ macro_rules! token {
             }
         }
 
-        impl crate::lexer::Token for $name {
-            fn new(value: String, span: crate::lexer::Span) -> Self {
+        impl $crate::lexer::Token for $name {
+            fn new(value: String, span: $crate::lexer::Span) -> Self {
                 Self { value, span }
             }
             fn value(&self) -> String {
                 self.value.to_string()
             }
-            fn span(&self) -> crate::lexer::Span {
+            fn span(&self) -> $crate::lexer::Span {
                 self.span
             }
             fn as_any(&self) -> &dyn std::any::Any {
@@ -51,6 +52,7 @@ macro_rules! token {
             }
         }
         impl $name {
+            #[allow(unused)]
             pub fn parse<T: std::str::FromStr>(&self) -> Result<T, <T as std::str::FromStr>::Err> {
                 self.value.parse::<T>()
             }

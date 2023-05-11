@@ -1,5 +1,4 @@
 use super::{ExprBlock, Ident, Param, Type};
-use crate::lexer::{Span, Token};
 use std::fmt;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -41,11 +40,11 @@ impl ItemFn {
         }
     }
 
-    pub fn span(&self) -> Span {
-        let start = self.keyword_fn.span();
-        let end = self.block.span();
-        Span::from((start, end))
-    }
+    // pub fn span(&self) -> Span {
+    //     let start = self.keyword_fn.span();
+    //     let end = self.block.span();
+    //     Span::from((start, end))
+    // }
 }
 
 impl fmt::Display for ItemFn {

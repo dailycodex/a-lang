@@ -1,5 +1,4 @@
-#![allow(unused)]
-use super::{Imm, Label, Reg, Var};
+use super::{Imm, Label, Reg};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
@@ -14,6 +13,7 @@ pub enum Instruction {
     Sub(Sub),
     Mul(Mul),
     Div(Div),
+    Grt(Grt),
     Copy(Copy),
     Conditional(Conditional),
     Jump(Jump),
@@ -24,21 +24,21 @@ pub enum Instruction {
     Leave(Leave),
 }
 
-impl Instruction {
-    pub fn is_exit(&self) -> bool {
-        match self {
-            Self::Conditional(..) | Self::Jump(..) => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_enter(&self) -> bool {
-        match self {
-            Self::DefLabel(..) => true,
-            _ => false,
-        }
-    }
-}
+// impl Instruction {
+//     pub fn _is_exit(&self) -> bool {
+//         match self {
+//             Self::Conditional(..) | Self::Jump(..) => true,
+//             _ => false,
+//         }
+//     }
+//
+//     pub fn is_enter(&self) -> bool {
+//         match self {
+//             Self::DefLabel(..) => true,
+//             _ => false,
+//         }
+//     }
+// }
 
 macro_rules! from_to {
     ($from:ident, $to:ident) => {
@@ -81,6 +81,7 @@ op_instruction!(Add);
 op_instruction!(Sub);
 op_instruction!(Mul);
 op_instruction!(Div);
+op_instruction!(Grt);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DefFunc {

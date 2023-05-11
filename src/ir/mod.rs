@@ -1,5 +1,6 @@
-#![allow(unused)]
 mod instruction;
+#[cfg(test)]
+mod test;
 use std::collections::HashMap;
 
 pub use instruction::*;
@@ -7,11 +8,8 @@ pub use instruction::*;
 use crate::lexer::*;
 
 use crate::parse::{
-    CtrlColon, CtrlComma, CtrlDot, CtrlLBrace, CtrlLBracet, CtrlLParan, CtrlRBrace, CtrlRBracet,
-    CtrlRParan, CtrlRightArrow, CtrlSemiColon, CtrlSlash, CtrlStar, CtrlThickRightArrow, Expr,
-    ExprBinary, ExprBlock, ExprCall, ExprIf, ExprLit, ExprReturn, ExprVar, Ident, Item, ItemFn,
-    Lit, LitBool, LitChar, LitInt, LitStr, Op, OpAdd, OpDiv, OpEqual, OpEqualEqual, OpGeq, OpGrt,
-    OpLeq, OpLes, OpMul, OpNeq, OpNot, OpSub, Param, Statement, Type as PType,
+    Expr, ExprBinary, ExprBlock, ExprCall, ExprIf, ExprLit, ExprReturn, ExprVar, Ident, Item,
+    ItemFn, Lit, LitBool, LitInt, Op, Param, Statement,
 };
 
 pub fn code_gen(ast: Vec<Item>) -> Result<Vec<Instruction>, Vec<String>> {
@@ -202,6 +200,7 @@ impl Ir for IrGenerator {
             Op::Sub(_) => Sub { des, lhs, rhs }.into(),
             Op::Mul(_) => Mul { des, lhs, rhs }.into(),
             Op::Div(_) => Div { des, lhs, rhs }.into(),
+            Op::Grt(_) => Grt { des, lhs, rhs }.into(),
             _ => unimplemented!("{op:?}"),
         };
         self.push_to_block(instruction);
@@ -259,8 +258,7 @@ impl AstVisitor for IrGenerator {
         } = bin;
         let lhs = self.visit_expr(left);
         let rhs = self.visit_expr(right);
-        let des = self.binary(op, lhs, rhs);
-        des
+        self.binary(op, lhs, rhs)
     }
 
     fn visit_item_fn(&mut self, item_fn: &ItemFn) {
@@ -268,7 +266,7 @@ impl AstVisitor for IrGenerator {
             name,
             params,
             block,
-            ret_type,
+            ret_type: _,
             ..
         } = item_fn;
 
@@ -280,7 +278,7 @@ impl AstVisitor for IrGenerator {
             .collect();
 
         self.push_to_block(Enter);
-        self.visit_expr_block(&block);
+        self.visit_expr_block(block);
         self.def_label(".exit".into());
         self.push_to_block(Leave);
 
@@ -307,10 +305,10 @@ impl AstVisitor for IrGenerator {
 
     fn visit_expr_if(&mut self, expr_if: &ExprIf) -> Reg {
         let ExprIf {
-            if_token,
+            if_token: _,
             cond,
             then_branch,
-            else_branch,
+            else_branch: _,
         } = expr_if;
         // pub struct ExprIf {
         //     pub if_token: super::keyword::If,

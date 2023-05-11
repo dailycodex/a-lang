@@ -1,5 +1,4 @@
-#![allow(unused)]
-use super::{Span, Token};
+use super::Span;
 use crate::parse::{
     keyword,
     CtrlColon,
@@ -36,9 +35,10 @@ use crate::parse::{
 use std::iter::Peekable;
 use std::str::Chars;
 
+type Token = Box<dyn super::Token>;
+
 pub struct Lexer<'a> {
     src: Peekable<Chars<'a>>,
-    len: usize,
     span: Span,
     last_chr_len: usize,
 }
@@ -46,37 +46,34 @@ pub struct Lexer<'a> {
 impl<'a> Lexer<'a> {
     pub fn new(src: &'a str) -> Self {
         Self {
-            len: src.len(),
             src: src.chars().peekable(),
             span: Span::default(),
             last_chr_len: 0,
         }
     }
 
-    fn tp(&self) -> usize {
-        self.span.idx_end
+    fn peek(&mut self) -> Option<&char> {
+        self.src.peek()
     }
 
-    fn is_end(&mut self) -> bool {
-        self.tp() >= self.len.saturating_sub(1)
-    }
-
-    fn peek(&mut self) -> char {
-        self.src.peek().cloned().unwrap_or('\0')
-    }
-
-    fn next(&mut self) -> char {
-        let ch = self.src.next().unwrap_or('\0');
+    fn next(&mut self) -> Option<char> {
+        let Some(ch) = self.src.next() else {
+            return None;
+        };
         self.span.right_shift(ch);
         self.last_chr_len = ch.to_string().as_bytes().len();
-        ch
+        Some(ch)
     }
 
-    fn next_if<F: FnOnce(char) -> bool>(&mut self, func: F) -> Option<char> {
-        let c = self.peek();
-        if func(c) {
-            assert_eq!(c, self.next());
-            return Some(c);
+    fn next_if<F>(&mut self, func: F) -> Option<char>
+    where
+        F: FnOnce(char) -> bool,
+    {
+        let Some(c) = self.peek() else {
+            return None;
+        };
+        if func(*c) {
+            return self.next();
         }
         None
     }
@@ -87,21 +84,21 @@ impl<'a> Lexer<'a> {
         span
     }
 
-    fn number(&mut self, c: char) -> Box<dyn Token> {
+    fn number(&mut self, c: char) -> Option<Token> {
         let mut number = c.to_string();
         while let Some(c) = self.next_if(|c| c.is_ascii_digit() || c == '_') {
             number.push(c);
         }
-        Box::new(LitInt::new(number, self.span()))
+        Some(Box::new(LitInt::new(number, self.span())))
     }
 
-    fn ident(&mut self, c: char) -> Box<dyn Token> {
+    fn ident(&mut self, c: char) -> Option<Token> {
         let mut id = c.to_string();
         while let Some(c) = self.next_if(|c| c.is_ascii_alphanumeric() || c == '_') {
             id.push(c);
         }
         let span = self.span();
-        match id.as_str() {
+        Some(match id.as_str() {
             "fn" => Box::new(keyword::Fn(span)),
             "struct" => Box::new(keyword::Struct(span)),
             "if" => Box::new(keyword::If(span)),
@@ -112,58 +109,65 @@ impl<'a> Lexer<'a> {
             "true" => Box::new(LitBool::new(id, span)),
             "false" => Box::new(LitBool::new(id, span)),
             _ => Box::new(Ident::new(id, span)),
-        }
+        })
     }
 
-    fn string(&mut self) -> Box<dyn Token> {
+    fn string(&mut self) -> Option<Token> {
         let mut string = String::new();
         while let Some(c) = self.next_if(|c| c != '"') {
             string.push(c);
         }
         self.next();
-        Box::new(LitStr::new(string, self.span()))
+        Some(Box::new(LitStr::new(string, self.span())))
     }
 
-    fn chr(&mut self) -> Box<dyn Token> {
+    fn chr(&mut self) -> Option<Token> {
         let mut string = String::new();
         while let Some(c) = self.next_if(|c| c != '\'') {
             string.push(c);
         }
         self.next();
 
-        Box::new(LitChar::new(string, self.span()))
+        Some(Box::new(LitChar::new(string, self.span())))
+    }
+    fn take_while(&mut self, expected: char) {
+        while self.next_if(|c| c != expected).is_some() {}
     }
 
-    fn comment(&mut self) -> Box<dyn Token> {
-        while let Some(_) = self.next_if(|c| c != '\n') {}
-        let ch = self.next();
+    fn comment(&mut self) -> Option<Token> {
+        self.take_while('\n');
+        let Some(ch) = self.next() else {
+            return None;
+        };
         self.parse(ch)
     }
 
-    fn token<T>(&mut self, op: &str) -> Box<dyn Token>
+    fn token<T>(&mut self, op: &str) -> Option<Token>
     where
-        T: Token,
+        T: super::Token,
     {
         for _ in 0..op.chars().count().saturating_sub(self.last_chr_len) {
             self.next();
         }
-        Box::new(T::new(op.into(), self.span()))
+        Some(Box::new(T::new(op.into(), self.span())))
     }
 
-    fn parse(&mut self, ch: char) -> Box<dyn Token> {
+    fn matched(&mut self, ch: char) -> bool {
+        matches!(self.peek(), Some(c) if c == &ch)
+    }
+
+    fn parse(&mut self, ch: char) -> Option<Token> {
         match ch {
             n @ '0'..='9' => self.number(n),
             i @ ('a'..='z' | 'A'..='Z') => self.ident(i),
             '"' => self.string(),
             '\'' => self.chr(),
-            '/' if self.peek() == '/' => self.comment(),
-            '-' if self.peek() == '>' => self.token::<CtrlRightArrow>("->"),
-            '>' if self.peek() == '=' => self.token::<OpGeq>(">="),
-            '<' if self.peek() == '=' => self.token::<OpLeq>("<="),
-            '=' if self.peek() == '=' => self.token::<OpEqualEqual>("=="),
-            // '|' if self.peek() == '|' => self.token::<>("||"),
-            // '&' if self.peek() == '&' => self.token::<>("&&"),
-            '!' if self.peek() == '=' => self.token::<OpNeq>("!="),
+            '/' if self.matched('/') => self.comment(),
+            '-' if self.matched('>') => self.token::<CtrlRightArrow>("->"),
+            '>' if self.matched('=') => self.token::<OpGeq>(">="),
+            '<' if self.matched('=') => self.token::<OpLeq>("<="),
+            '=' if self.matched('=') => self.token::<OpEqualEqual>("=="),
+            '!' if self.matched('=') => self.token::<OpNeq>("!="),
             '-' => self.token::<OpSub>("-"),
             '+' => self.token::<OpAdd>("+"),
             '*' => self.token::<OpMul>("*"),
@@ -184,33 +188,25 @@ impl<'a> Lexer<'a> {
             ':' => self.token::<CtrlColon>(":"),
             ';' => self.token::<CtrlSemiColon>(";"),
             // 'λ' => self.op_token("λ"),
-            '\n' | ' ' | '\0' => {
-                let ch = self.next();
+            '\n' | '\r' | ' ' | '\0' => {
+                let Some(ch) = self.next() else {
+                    return None;
+                };
                 self.span.reset(Some(self.last_chr_len));
                 self.parse(ch)
             }
-            _ => panic!(),
-            // '\0' => Token::Eof(self.span()),
-            // c => Token::Error(format!("unknown char '{}'", c), self.span()),
+            _ => panic!("unknown char {ch:?}"),
         }
     }
 
-    pub fn lex(mut self) -> Result<Vec<Box<dyn Token>>, Vec<String>> {
+    pub fn lex(mut self) -> Result<Vec<Token>, Vec<String>> {
         let mut tokens = vec![];
-        // let mut errors = vec![];
-        while !self.is_end() {
-            let ch = self.next();
-            let token = self.parse(ch);
+        while let Some(ch) = self.next() {
+            let Some(token) = self.parse(ch) else {
+                break;
+            };
             tokens.push(token);
-            // if !token.is_err() {
-            //     tokens.push(token);
-            // } else {
-            //     errors.push(token.lexme().to_string())
-            // }
         }
-        // if !errors.is_empty() {
-        //     return Err(errors);
-        // }
         Ok(tokens)
     }
 }

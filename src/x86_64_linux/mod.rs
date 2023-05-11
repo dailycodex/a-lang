@@ -1,5 +1,6 @@
-#![allow(unused)]
 mod reg_state;
+#[cfg(test)]
+mod test;
 pub mod x86reg;
 use reg_state::RegState;
 pub use std::fmt;
@@ -33,6 +34,7 @@ trait Compile {
 pub enum Instruction {
     MoveImm(X86Reg, u64),
     MoveReg(X86Reg, X86Reg),
+    MoveZx(X86Reg),
     Add(X86Reg, X86Reg),
     Sub(X86Reg, X86Reg),
     Mul(X86Reg, X86Reg),
@@ -43,27 +45,85 @@ pub enum Instruction {
     JumpZero(String),
     Cmp(X86Reg, X86Reg),
     Test(X86Reg, X86Reg),
+    SetG,
     ProLog,
     Epilog,
+    Syscall,
 }
 
 impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::MoveImm(des, value) => write!(f, "  mov   {des},    {value}\n"),
-            Self::MoveReg(des, src) => write!(f, "  mov   {des},    {src}\n"),
-            Self::Add(des, reg) => write!(f, "  add   {des},    {reg}\n"),
-            Self::Sub(des, reg) => write!(f, "  sub   {des},    {reg}\n"),
-            Self::Mul(des, reg) => write!(f, "  imul  {des},    {reg}\n"),
-            Self::Div(des, reg) => write!(f, "  idiv  {des},    {reg}\n"),
-            Self::DefLabel(name) => write!(f, "{}__:\n", name),
-            Self::Call(name) => write!(f, "  call  {}__\n", name),
-            Self::Jump(name) => write!(f, "  jmp   {}__\n", name),
-            Self::JumpZero(name) => write!(f, "  jz    {}__\n", name),
-            Self::Cmp(lhs, rhs) => write!(f, "  cmp   {lhs},   {rhs}\n"),
-            Self::Test(lhs, rhs) => write!(f, "  test  {lhs},   {rhs}\n"),
-            Self::ProLog => write!(f, "  push  rbp\n  mov   rbp,    rsp\n"),
-            Self::Epilog => write!(f, "  mov   rsp,    rbp\n  pop   rbp\n  ret\n"),
+            Self::MoveImm(des, value) => {
+                writeln!(f, "{:>10}{:>10},{:>10}", "mov", des.to_string(), value)
+            }
+            Self::MoveReg(des, src) => writeln!(
+                f,
+                "{:>10}{:>10},{:>10}",
+                "mov",
+                des.to_string(),
+                src.to_string()
+            ),
+            Self::MoveZx(src) => writeln!(f, "{:>10}{:>10},{:>10}", "movzx", src.to_string(), "al"),
+            Self::Add(des, reg) => writeln!(
+                f,
+                "{:>10}{:>10},{:>10}",
+                "add",
+                des.to_string(),
+                reg.to_string()
+            ),
+            Self::Sub(des, reg) => writeln!(
+                f,
+                "{:>10}{:>10},{:>10}",
+                "sub",
+                des.to_string(),
+                reg.to_string()
+            ),
+            Self::Mul(des, reg) => writeln!(
+                f,
+                "{:>10}{:>10},{:>10}",
+                "imul",
+                des.to_string(),
+                reg.to_string()
+            ),
+            Self::Div(des, reg) => writeln!(
+                f,
+                "{:>10}{:>10},{:>10}",
+                "idiv",
+                des.to_string(),
+                reg.to_string()
+            ),
+            Self::DefLabel(name) => writeln!(f, "{}__:", name),
+            Self::Call(name) => writeln!(f, "{:>10}{:>10}__", "call", name),
+            Self::Jump(name) => writeln!(f, "{:>10}{:>10}__", "jmp", name),
+            Self::JumpZero(name) => writeln!(f, "{:>10}{:>10}__", "jz", name),
+            Self::Cmp(lhs, rhs) => writeln!(
+                f,
+                "{:>10}{:>10},{:>10}",
+                "cmp",
+                lhs.to_string(),
+                rhs.to_string()
+            ),
+            Self::Test(lhs, rhs) => writeln!(
+                f,
+                "{:>10}{:>10},{:>10}",
+                "test",
+                lhs.to_string(),
+                rhs.to_string()
+            ),
+            Self::SetG => writeln!(f, "{:>10}{:>10}", "setg", "al"),
+            Self::ProLog => {
+                let push = format!("{:>10}{:>10}", "push", "rbp");
+                let mov = format!("{:>10}{:>10},{:>10}", "mov", "rbp", "rsp");
+                writeln!(f, "{push}\n{mov}")
+            }
+            Self::Epilog => {
+                let mov = format!("{:>10}{:>10},{:>10}", "mov", "rbp", "rsp");
+                let pop = format!("{:>10}{:>10}", "pop", "rbp");
+                let ret = format!("{:>10}", "ret");
+                writeln!(f, "{mov}\n{pop}\n{ret}")
+            }
+            Self::Syscall => writeln!(f, "{:>10}", "syscall"),
         }
     }
 }
@@ -77,13 +137,13 @@ impl Compile for ir::Instruction {
             ir::Instruction::Sub(i) => i.compile(state),
             ir::Instruction::Mul(i) => i.compile(state),
             ir::Instruction::Div(i) => i.compile(state),
+            ir::Instruction::Grt(i) => i.compile(state),
             ir::Instruction::Copy(i) => i.compile(state),
             ir::Instruction::Conditional(i) => i.compile(state),
             ir::Instruction::Jump(i) => i.compile(state),
             ir::Instruction::DefLabel(i) => i.compile(state),
             ir::Instruction::Call(i) => i.compile(state),
             ir::Instruction::Return(i) => i.compile(state),
-            ir::Instruction::Enter(i) => i.compile(state),
             ir::Instruction::Enter(i) => i.compile(state),
             ir::Instruction::Leave(i) => i.compile(state),
         }
@@ -106,18 +166,18 @@ impl Compile for ir::DefFunc {
     fn compile(&self, state: &mut RegState) -> Vec<Instruction> {
         let ir::DefFunc {
             name,
-            ret,
-            params,
+            ret: _,
+            params: _,
             body,
+            ..
         } = self;
         // FIXME:getting regesters for the params is currently not implemented correctly.
         let mut result = body
             .iter()
-            .map(|inst| inst.compile(state))
-            .flatten()
+            .flat_map(|inst| inst.compile(state))
             .collect::<Vec<Instruction>>();
         result.insert(0, Instruction::DefLabel(name.into()));
-        let ret_reg = state.get_ret_reg();
+        // let ret_reg = state.get_ret_reg();
         // let last_reg = state.last_used_reg();
         // let instruction = Instruction::MoveReg(ret_reg, last_reg);
         // result.insert(result.len().saturating_sub(1), instruction);
@@ -175,9 +235,24 @@ impl Compile for ir::Div {
         vec![Instruction::MoveReg(des, lhs), Instruction::Div(des, rhs)]
     }
 }
-// Copy(Copy),
-impl Compile for ir::Copy {
+
+impl Compile for ir::Grt {
     fn compile(&self, state: &mut RegState) -> Vec<Instruction> {
+        let ir::Grt { des, lhs, rhs } = self;
+        let des = state.get_reg(des);
+        let lhs = state.get_reg(lhs);
+        let rhs = state.get_reg(rhs);
+        vec![
+            Instruction::MoveReg(des, lhs),
+            Instruction::Cmp(des, rhs),
+            Instruction::SetG,
+            Instruction::MoveZx(des),
+        ]
+    }
+}
+
+impl Compile for ir::Copy {
+    fn compile(&self, _state: &mut RegState) -> Vec<Instruction> {
         unimplemented!("{:?}", self)
     }
 }
@@ -193,19 +268,19 @@ impl Compile for ir::Conditional {
 }
 // Jump(Jump),
 impl Compile for ir::Jump {
-    fn compile(&self, state: &mut RegState) -> Vec<Instruction> {
+    fn compile(&self, _state: &mut RegState) -> Vec<Instruction> {
         vec![Instruction::Jump(self.name())]
     }
 }
 // DefLabel(DefLabel),
 impl Compile for ir::DefLabel {
-    fn compile(&self, state: &mut RegState) -> Vec<Instruction> {
+    fn compile(&self, _state: &mut RegState) -> Vec<Instruction> {
         vec![Instruction::DefLabel(self.name())]
     }
 }
 // Call(Call),
 impl Compile for ir::Call {
-    fn compile(&self, state: &mut RegState) -> Vec<Instruction> {
+    fn compile(&self, _state: &mut RegState) -> Vec<Instruction> {
         vec![Instruction::Call(self.caller.0.to_string())]
     }
 }
@@ -221,32 +296,32 @@ impl Compile for ir::Return {
 
 // Enter(Enter),
 impl Compile for ir::Enter {
-    fn compile(&self, state: &mut RegState) -> Vec<Instruction> {
+    fn compile(&self, _state: &mut RegState) -> Vec<Instruction> {
         vec![Instruction::ProLog]
     }
 }
 // Leave(Leave),
 impl Compile for ir::Leave {
-    fn compile(&self, state: &mut RegState) -> Vec<Instruction> {
+    fn compile(&self, _state: &mut RegState) -> Vec<Instruction> {
         vec![Instruction::Epilog]
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::ir;
-    use crate::lexer::lex;
-    use crate::parse::parse;
-    use pretty_assertions::assert_eq;
+    // use super::*;
+    // use crate::ir;
+    // use crate::lexer::lex;
+    // use crate::parse::parse;
+    // use pretty_assertions::assert_eq;
 
-    fn setup(input: &str) -> Vec<Instruction> {
-        lex(input)
-            .and_then(parse)
-            .and_then(ir::code_gen)
-            .and_then(compile_ir_code)
-            .unwrap()
-    }
+    // fn setup(input: &str) -> Vec<Instruction> {
+    //     lex(input)
+    //         .and_then(parse)
+    //         .and_then(ir::code_gen)
+    //         .and_then(compile_ir_code)
+    //         .unwrap()
+    // }
     // #[test]
     // fn basic_test() {
     //     let left = setup("fn main() { 1 + 2; }");

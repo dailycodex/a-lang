@@ -44,5 +44,5 @@ macro_rules! snapshot {
     };
 }
 
-snapshot!(test_lexer, "testdata/snapshots/lexer.a");
-snapshot!(lexer_if_else, "testdata/snapshots/ifelse.a");
+snapshot!(binary, "testdata/snapshots/binary.a");
+snapshot!(ifelse, "testdata/snapshots/ifelse.a");

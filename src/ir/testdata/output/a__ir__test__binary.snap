@@ -1,0 +1,83 @@
+---
+source: src/ir/test.rs
+expression: result
+---
+DefFunc(
+    DefFunc {
+        name: "main",
+        ret: I64,
+        params: [],
+        body: [
+            Enter(
+                Enter,
+            ),
+            LoadImm(
+                LoadImm {
+                    des: Reg(
+                        0,
+                    ),
+                    imm: Imm(
+                        1,
+                    ),
+                },
+            ),
+            LoadImm(
+                LoadImm {
+                    des: Reg(
+                        1,
+                    ),
+                    imm: Imm(
+                        2,
+                    ),
+                },
+            ),
+            LoadImm(
+                LoadImm {
+                    des: Reg(
+                        2,
+                    ),
+                    imm: Imm(
+                        3,
+                    ),
+                },
+            ),
+            Mul(
+                Mul {
+                    des: Reg(
+                        3,
+                    ),
+                    lhs: Reg(
+                        1,
+                    ),
+                    rhs: Reg(
+                        2,
+                    ),
+                },
+            ),
+            Add(
+                Add {
+                    des: Reg(
+                        4,
+                    ),
+                    lhs: Reg(
+                        0,
+                    ),
+                    rhs: Reg(
+                        3,
+                    ),
+                },
+            ),
+            DefLabel(
+                DefLabel(
+                    Label(
+                        ".exit",
+                    ),
+                ),
+            ),
+            Leave(
+                Leave,
+            ),
+        ],
+    },
+)
+

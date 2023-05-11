@@ -1,0 +1,19 @@
+---
+source: src/x86_64_linux/test.rs
+expression: result
+---
+main__:
+      push       rbp
+       mov       rbp,       rsp
+       mov       rdi,         1
+       mov       rsi,         2
+       mov       rdx,         3
+       mov       rcx,       rsi
+      imul       rcx,       rdx
+       mov       rsi,       rdi
+       add       rsi,       rcx
+.exit__:
+       mov       rbp,       rsp
+       pop       rbp
+       ret
+

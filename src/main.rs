@@ -64,6 +64,18 @@ fn compile(flags: Flags) -> Result<(), Vec<String>> {
         .and_then(compile_asm_with_fasm)
         .map_err(print_error_message)
 }
+fn start_func_assembly() -> String {
+    use x86_64_linux::{Instruction, X86Reg64};
+    [
+        Instruction::DefLabel("_start".into()),
+        Instruction::MoveReg(X86Reg64::RDI.into(), X86Reg64::RAX.into()),
+        Instruction::MoveImm(X86Reg64::RAX.into(), 60),
+        Instruction::Syscall,
+    ]
+    .iter()
+    .map(ToString::to_string)
+    .collect()
+}
 
 fn write_asm_to_file((filename, asm_code): (String, String)) -> Result<String, Vec<String>> {
     let Some((filename, _)) = filename.split_once('.') else {
@@ -72,35 +84,43 @@ fn write_asm_to_file((filename, asm_code): (String, String)) -> Result<String, V
     };
 
     let asm_file = format!("{filename}.asm");
-    let code = format!(
-        "
-
-format ELF64 executable 3
+    let header = if cfg!(target_os = "windows") {
+        "format pe64 gui"
+    } else {
+        "format ELF64 executable 3
 segment readable executable
-
-entry _start
+"
+    };
+    let footer = if cfg!(target_os = "windows") {
+        ""
+    } else {
+        "segment readable writable"
+    };
+    let code = format!(
+        "{header}
+entry _start__
 {asm_code}
 
-_start:
-  call  main__
-  mov   rdi,    rax
-  mov   rax,    60
-  syscall
-
-segment readable writable
-                       "
+{}
+{footer}",
+        start_func_assembly()
     );
 
     std::fs::write(&asm_file, code)
-        .and_then(|_| Ok(asm_file))
+        .map(|_| asm_file)
         .map_err(|e| vec![e.to_string()])
 }
 
 fn compile_asm_with_fasm(asm_file: String) -> Result<(), Vec<String>> {
-    Command::new("fasm")
+    let fasm = if cfg!(target_os = "windows") {
+        "./fasm"
+    } else {
+        "fasm"
+    };
+    Command::new(fasm)
         .arg(asm_file)
         .output()
-        .and_then(|output| {
+        .map(|output| {
             eprintln!(
                 "{}",
                 String::from_utf8(output.stdout)
@@ -116,7 +136,6 @@ fn compile_asm_with_fasm(asm_file: String) -> Result<(), Vec<String>> {
             if !output.status.success() {
                 std::process::exit(1);
             }
-            Ok(())
         })
         .map_err(|e| vec![e.to_string()])
 }
