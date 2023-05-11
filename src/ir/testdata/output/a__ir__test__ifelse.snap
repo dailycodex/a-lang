@@ -1,0 +1,124 @@
+---
+source: src/ir/test.rs
+expression: result
+---
+DefFunc(
+    DefFunc {
+        name: "main",
+        ret: I64,
+        params: [],
+        body: [
+            Enter(
+                Enter,
+            ),
+            LoadImm(
+                LoadImm {
+                    des: Reg(
+                        0,
+                    ),
+                    imm: Imm(
+                        1,
+                    ),
+                },
+            ),
+            LoadImm(
+                LoadImm {
+                    des: Reg(
+                        1,
+                    ),
+                    imm: Imm(
+                        3,
+                    ),
+                },
+            ),
+            Grt(
+                Grt {
+                    des: Reg(
+                        2,
+                    ),
+                    lhs: Reg(
+                        0,
+                    ),
+                    rhs: Reg(
+                        1,
+                    ),
+                },
+            ),
+            Conditional(
+                Conditional {
+                    label: Label(
+                        ".L0",
+                    ),
+                    reg: Reg(
+                        2,
+                    ),
+                },
+            ),
+            LoadImm(
+                LoadImm {
+                    des: Reg(
+                        3,
+                    ),
+                    imm: Imm(
+                        1,
+                    ),
+                },
+            ),
+            LoadImm(
+                LoadImm {
+                    des: Reg(
+                        4,
+                    ),
+                    imm: Imm(
+                        4,
+                    ),
+                },
+            ),
+            Add(
+                Add {
+                    des: Reg(
+                        5,
+                    ),
+                    lhs: Reg(
+                        3,
+                    ),
+                    rhs: Reg(
+                        4,
+                    ),
+                },
+            ),
+            Return(
+                Return(
+                    Reg(
+                        5,
+                    ),
+                ),
+            ),
+            Jump(
+                Jump(
+                    Label(
+                        ".exit",
+                    ),
+                ),
+            ),
+            DefLabel(
+                DefLabel(
+                    Label(
+                        ".L0",
+                    ),
+                ),
+            ),
+            DefLabel(
+                DefLabel(
+                    Label(
+                        ".exit",
+                    ),
+                ),
+            ),
+            Leave(
+                Leave,
+            ),
+        ],
+    },
+)
+

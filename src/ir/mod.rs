@@ -1,3 +1,5 @@
+#[cfg(test)]
+mod test;
 mod instruction;
 use std::collections::HashMap;
 

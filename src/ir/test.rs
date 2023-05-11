@@ -2,19 +2,18 @@ macro_rules! snapshot {
     ($name:tt, $path:tt) => {
         #[test]
         fn $name() {
-            use super::parse;
-            use crate::lexer::lex;
+            use $crate::parse::parse;
+            use $crate::lexer::lex;
+            use super::*;
             let contents = include_str!($path);
             let tokens = lex(contents).unwrap();
             let ast = parse(tokens).unwrap();
-            let ast_string = ast
-                .iter()
-                .map(|node| format!("{node}\n"))
-                .collect::<String>();
+            let ir_code = code_gen(ast).unwrap();
+            let result = ir_code.iter().map(|i| format!("{i:#?}\n")).collect::<String>();
             let mut settings = insta::Settings::clone_current();
             settings.set_snapshot_path("testdata/output/");
             settings.bind(|| {
-                insta::assert_snapshot!(ast_string);
+                insta::assert_snapshot!(result);
             });
         }
     };

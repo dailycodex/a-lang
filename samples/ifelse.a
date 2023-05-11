@@ -1,5 +1,5 @@
 fn main() {
-  if false {
+  if 1 > 2 {
     return 1 + 4;
   };
   return 20;
