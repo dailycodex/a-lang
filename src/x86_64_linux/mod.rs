@@ -1,6 +1,6 @@
+mod reg_state;
 #[cfg(test)]
 mod test;
-mod reg_state;
 pub mod x86reg;
 use reg_state::RegState;
 pub use std::fmt;

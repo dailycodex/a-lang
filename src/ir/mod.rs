@@ -1,6 +1,6 @@
+mod instruction;
 #[cfg(test)]
 mod test;
-mod instruction;
 use std::collections::HashMap;
 
 pub use instruction::*;
