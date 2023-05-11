@@ -46,6 +46,7 @@ pub enum Instruction {
     SetG,
     ProLog,
     Epilog,
+    Syscall,
 }
 
 impl fmt::Display for Instruction {
@@ -117,9 +118,10 @@ impl fmt::Display for Instruction {
             Self::Epilog => {
                 let mov = format!("{:>10}{:>10},{:>10}", "mov", "rbp", "rsp");
                 let pop = format!("{:>10}{:>10}", "pop", "rbp");
-                let ret = "  ret";
+                let ret = format!("{:>10}", "ret");
                 writeln!(f, "{mov}\n{pop}\n{ret}")
             }
+            Self::Syscall => writeln!(f, "{:>10}", "syscall"),
         }
     }
 }

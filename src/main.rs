@@ -64,6 +64,18 @@ fn compile(flags: Flags) -> Result<(), Vec<String>> {
         .and_then(compile_asm_with_fasm)
         .map_err(print_error_message)
 }
+fn start_func_assembly() -> String {
+    use x86_64_linux::{Instruction, X86Reg64};
+    [
+        Instruction::DefLabel("_start".into()),
+        Instruction::MoveReg(X86Reg64::RDI.into(), X86Reg64::RAX.into()),
+        Instruction::MoveImm(X86Reg64::RAX.into(), 60),
+        Instruction::Syscall,
+    ]
+    .iter()
+    .map(ToString::to_string)
+    .collect()
+}
 
 fn write_asm_to_file((filename, asm_code): (String, String)) -> Result<String, Vec<String>> {
     let Some((filename, _)) = filename.split_once('.') else {
@@ -85,19 +97,13 @@ segment readable executable
         "segment readable writable"
     };
     let code = format!(
-        "
-
-{header}
-entry _start
+        "{header}
+entry _start__
 {asm_code}
 
-_start:
-  call  main__
-  mov   rdi,    rax
-  mov   rax,    60
-  syscall
-{footer}
-                       "
+{}
+{footer}",
+        start_func_assembly()
     );
 
     std::fs::write(&asm_file, code)
