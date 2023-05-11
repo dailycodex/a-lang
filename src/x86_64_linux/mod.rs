@@ -51,22 +51,31 @@ pub enum Instruction {
 impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::MoveImm(des, value) => writeln!(f, "  mov   {des},    {value}"),
-            Self::MoveReg(des, src) => writeln!(f, "  mov   {des},    {src}"),
-            Self::MoveZx(src) => writeln!(f, "  movzx {src},    al"),
-            Self::Add(des, reg) => writeln!(f, "  add   {des},    {reg}"),
-            Self::Sub(des, reg) => writeln!(f, "  sub   {des},    {reg}"),
-            Self::Mul(des, reg) => writeln!(f, "  imul  {des},    {reg}"),
-            Self::Div(des, reg) => writeln!(f, "  idiv  {des},    {reg}"),
+            Self::MoveImm(des, value) => writeln!(f, "{:>10}{:>10},{:>10}", "mov", des.to_string(), value),
+            Self::MoveReg(des, src) => writeln!(f, "{:>10}{:>10},{:>10}", "mov", des.to_string(), src.to_string()),
+            Self::MoveZx(src) => writeln!(f, "{:>10}{:>10},{:>10}", "movzx", src.to_string(), "al"),
+            Self::Add(des, reg) => writeln!(f, "{:>10}{:>10},{:>10}", "add", des.to_string(), reg.to_string()),
+            Self::Sub(des, reg) => writeln!(f, "{:>10}{:>10},{:>10}", "sub", des.to_string(), reg.to_string()),
+            Self::Mul(des, reg) => writeln!(f, "{:>10}{:>10},{:>10}", "imul", des.to_string(), reg.to_string()),
+            Self::Div(des, reg) => writeln!(f, "{:>10}{:>10},{:>10}", "idiv", des.to_string(), reg.to_string()),
             Self::DefLabel(name) => writeln!(f, "{}__:", name),
-            Self::Call(name) => writeln!(f, "  call  {}__", name),
-            Self::Jump(name) => writeln!(f, "  jmp   {}__", name),
-            Self::JumpZero(name) => writeln!(f, "  jz    {}__", name),
-            Self::Cmp(lhs, rhs) => writeln!(f, "  cmp   {lhs},   {rhs}"),
-            Self::Test(lhs, rhs) => writeln!(f, "  test  {lhs},   {rhs}"),
-            Self::SetG => writeln!(f, "  setg   al"),
-            Self::ProLog => writeln!(f, "  push  rbp\n  mov   rbp,    rsp"),
-            Self::Epilog => writeln!(f, "  mov   rsp,    rbp\n  pop   rbp\n  ret"),
+            Self::Call(name) => writeln!(f, "{:>10}{:>10}__", "call",  name),
+            Self::Jump(name) => writeln!(f, "{:>10}{:>10}__", "jmp", name),
+            Self::JumpZero(name) => writeln!(f, "{:>10}{:>10}__", "jz", name),
+            Self::Cmp(lhs, rhs) => writeln!(f, "{:>10}{:>10},{:>10}", "cmp", lhs.to_string(), rhs.to_string()),
+            Self::Test(lhs, rhs) => writeln!(f, "{:>10}{:>10},{:>10}", "test", lhs.to_string(), rhs.to_string()),
+            Self::SetG => writeln!(f, "{:>10}{:>10}", "setg", "al"),
+            Self::ProLog => {
+                let push = format!("{:>10}{:>10}", "push", "rbp");
+                let mov =  format!("{:>10}{:>10},{:>10}",  "mov", "rbp", "rsp");
+                writeln!(f, "{push}\n{mov}")
+            }
+            Self::Epilog => {
+                let mov =  format!("{:>10}{:>10},{:>10}",  "mov", "rbp", "rsp");
+                let pop = format!("{:>10}{:>10}", "pop", "rbp");
+                let ret = "  ret";
+                writeln!(f, "{mov}\n{pop}\n{ret}")
+            }
         }
     }
 }
