@@ -53,7 +53,6 @@ impl Span {
     pub fn len(&self) -> usize {
         self.idx_end - self.idx_start
     }
-
 }
 
 impl From<(Span, Span)> for Span {

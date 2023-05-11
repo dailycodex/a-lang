@@ -1,9 +1,8 @@
 use super::{
-    keyword, Ctrl, CtrlColon, CtrlComma, CtrlLBrace, CtrlLParan, CtrlRBrace,
-    CtrlRParan, CtrlRightArrow, CtrlSemiColon,
-    Expr, ExprBinary, ExprBlock, ExprCall, ExprIf, ExprReturn,
-    Ident, Item, ItemFn, LitBool, LitChar, LitInt, LitStr, Op, OpAdd, OpDiv,
-    OpEqualEqual, OpGeq, OpGrt, OpLeq, OpLes, OpMul, OpNeq, OpSub, Param, Statement, Type,
+    keyword, Ctrl, CtrlColon, CtrlComma, CtrlLBrace, CtrlLParan, CtrlRBrace, CtrlRParan,
+    CtrlRightArrow, CtrlSemiColon, Expr, ExprBinary, ExprBlock, ExprCall, ExprIf, ExprReturn,
+    Ident, Item, ItemFn, LitBool, LitChar, LitInt, LitStr, Op, OpAdd, OpDiv, OpEqualEqual, OpGeq,
+    OpGrt, OpLeq, OpLes, OpMul, OpNeq, OpSub, Param, Statement, Type,
 };
 
 use crate::lexer::{Token, TokenStream};
