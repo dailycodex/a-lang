@@ -101,7 +101,7 @@ _start:
     );
 
     std::fs::write(&asm_file, code)
-        .and_then(|_| Ok(asm_file))
+        .map(|_| asm_file)
         .map_err(|e| vec![e.to_string()])
 }
 
@@ -114,7 +114,7 @@ fn compile_asm_with_fasm(asm_file: String) -> Result<(), Vec<String>> {
     Command::new(fasm)
         .arg(asm_file)
         .output()
-        .and_then(|output| {
+        .map(|output| {
             eprintln!(
                 "{}",
                 String::from_utf8(output.stdout)
@@ -130,7 +130,6 @@ fn compile_asm_with_fasm(asm_file: String) -> Result<(), Vec<String>> {
             if !output.status.success() {
                 std::process::exit(1);
             }
-            Ok(())
         })
         .map_err(|e| vec![e.to_string()])
 }

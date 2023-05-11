@@ -1,12 +1,12 @@
 use super::{
-    keyword, Ctrl, CtrlColon, CtrlComma, CtrlDot, CtrlLBrace, CtrlLBracet, CtrlLParan, CtrlRBrace,
-    CtrlRBracet, CtrlRParan, CtrlRightArrow, CtrlSemiColon, CtrlSlash, CtrlStar,
-    CtrlThickRightArrow, Expr, ExprBinary, ExprBlock, ExprCall, ExprIf, ExprLit, ExprReturn,
-    ExprVar, Ident, Item, ItemFn, Lit, LitBool, LitChar, LitInt, LitStr, Op, OpAdd, OpDiv, OpEqual,
-    OpEqualEqual, OpGeq, OpGrt, OpLeq, OpLes, OpMul, OpNeq, OpNot, OpSub, Param, Statement, Type,
+    keyword, Ctrl, CtrlColon, CtrlComma, CtrlLBrace, CtrlLParan, CtrlRBrace,
+    CtrlRParan, CtrlRightArrow, CtrlSemiColon,
+    Expr, ExprBinary, ExprBlock, ExprCall, ExprIf, ExprReturn,
+    Ident, Item, ItemFn, LitBool, LitChar, LitInt, LitStr, Op, OpAdd, OpDiv,
+    OpEqualEqual, OpGeq, OpGrt, OpLeq, OpLes, OpMul, OpNeq, OpSub, Param, Statement, Type,
 };
 
-use crate::lexer::{Span, Token, TokenStream};
+use crate::lexer::{Token, TokenStream};
 type PResult<T> = std::result::Result<T, String>;
 
 pub struct Parser {
@@ -42,7 +42,6 @@ impl Parser {
                 Err(error) => {
                     self.errors.push(error);
                     self.recover();
-                    let msg = format!("{:?}", self.errors.last());
                 }
             }
         }

@@ -51,22 +51,22 @@ pub enum Instruction {
 impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::MoveImm(des, value) => write!(f, "  mov   {des},    {value}\n"),
-            Self::MoveReg(des, src) => write!(f, "  mov   {des},    {src}\n"),
-            Self::MoveZx(src) => write!(f, "  movzx {src},    al\n"),
-            Self::Add(des, reg) => write!(f, "  add   {des},    {reg}\n"),
-            Self::Sub(des, reg) => write!(f, "  sub   {des},    {reg}\n"),
-            Self::Mul(des, reg) => write!(f, "  imul  {des},    {reg}\n"),
-            Self::Div(des, reg) => write!(f, "  idiv  {des},    {reg}\n"),
-            Self::DefLabel(name) => write!(f, "{}__:\n", name),
-            Self::Call(name) => write!(f, "  call  {}__\n", name),
-            Self::Jump(name) => write!(f, "  jmp   {}__\n", name),
-            Self::JumpZero(name) => write!(f, "  jz    {}__\n", name),
-            Self::Cmp(lhs, rhs) => write!(f, "  cmp   {lhs},   {rhs}\n"),
-            Self::Test(lhs, rhs) => write!(f, "  test  {lhs},   {rhs}\n"),
-            Self::SetG => write!(f, "  setg   al\n"),
-            Self::ProLog => write!(f, "  push  rbp\n  mov   rbp,    rsp\n"),
-            Self::Epilog => write!(f, "  mov   rsp,    rbp\n  pop   rbp\n  ret\n"),
+            Self::MoveImm(des, value) => writeln!(f, "  mov   {des},    {value}"),
+            Self::MoveReg(des, src) => writeln!(f, "  mov   {des},    {src}"),
+            Self::MoveZx(src) => writeln!(f, "  movzx {src},    al"),
+            Self::Add(des, reg) => writeln!(f, "  add   {des},    {reg}"),
+            Self::Sub(des, reg) => writeln!(f, "  sub   {des},    {reg}"),
+            Self::Mul(des, reg) => writeln!(f, "  imul  {des},    {reg}"),
+            Self::Div(des, reg) => writeln!(f, "  idiv  {des},    {reg}"),
+            Self::DefLabel(name) => writeln!(f, "{}__:", name),
+            Self::Call(name) => writeln!(f, "  call  {}__", name),
+            Self::Jump(name) => writeln!(f, "  jmp   {}__", name),
+            Self::JumpZero(name) => writeln!(f, "  jz    {}__", name),
+            Self::Cmp(lhs, rhs) => writeln!(f, "  cmp   {lhs},   {rhs}"),
+            Self::Test(lhs, rhs) => writeln!(f, "  test  {lhs},   {rhs}"),
+            Self::SetG => writeln!(f, "  setg   al"),
+            Self::ProLog => writeln!(f, "  push  rbp  mov   rbp,    rsp"),
+            Self::Epilog => writeln!(f, "  mov   rsp,    rbp  pop   rbp  ret"),
         }
     }
 }
@@ -87,7 +87,6 @@ impl Compile for ir::Instruction {
             ir::Instruction::DefLabel(i) => i.compile(state),
             ir::Instruction::Call(i) => i.compile(state),
             ir::Instruction::Return(i) => i.compile(state),
-            ir::Instruction::Enter(i) => i.compile(state),
             ir::Instruction::Enter(i) => i.compile(state),
             ir::Instruction::Leave(i) => i.compile(state),
         }
@@ -110,18 +109,18 @@ impl Compile for ir::DefFunc {
     fn compile(&self, state: &mut RegState) -> Vec<Instruction> {
         let ir::DefFunc {
             name,
-            ret,
-            params,
+            ret: _,
+            params: _,
             body,
+            ..
         } = self;
         // FIXME:getting regesters for the params is currently not implemented correctly.
         let mut result = body
             .iter()
-            .map(|inst| inst.compile(state))
-            .flatten()
+            .flat_map(|inst| inst.compile(state))
             .collect::<Vec<Instruction>>();
         result.insert(0, Instruction::DefLabel(name.into()));
-        let ret_reg = state.get_ret_reg();
+        // let ret_reg = state.get_ret_reg();
         // let last_reg = state.last_used_reg();
         // let instruction = Instruction::MoveReg(ret_reg, last_reg);
         // result.insert(result.len().saturating_sub(1), instruction);
@@ -196,7 +195,7 @@ impl Compile for ir::Grt {
 }
 
 impl Compile for ir::Copy {
-    fn compile(&self, state: &mut RegState) -> Vec<Instruction> {
+    fn compile(&self, _state: &mut RegState) -> Vec<Instruction> {
         unimplemented!("{:?}", self)
     }
 }
@@ -212,19 +211,19 @@ impl Compile for ir::Conditional {
 }
 // Jump(Jump),
 impl Compile for ir::Jump {
-    fn compile(&self, state: &mut RegState) -> Vec<Instruction> {
+    fn compile(&self, _state: &mut RegState) -> Vec<Instruction> {
         vec![Instruction::Jump(self.name())]
     }
 }
 // DefLabel(DefLabel),
 impl Compile for ir::DefLabel {
-    fn compile(&self, state: &mut RegState) -> Vec<Instruction> {
+    fn compile(&self, _state: &mut RegState) -> Vec<Instruction> {
         vec![Instruction::DefLabel(self.name())]
     }
 }
 // Call(Call),
 impl Compile for ir::Call {
-    fn compile(&self, state: &mut RegState) -> Vec<Instruction> {
+    fn compile(&self, _state: &mut RegState) -> Vec<Instruction> {
         vec![Instruction::Call(self.caller.0.to_string())]
     }
 }
@@ -240,32 +239,32 @@ impl Compile for ir::Return {
 
 // Enter(Enter),
 impl Compile for ir::Enter {
-    fn compile(&self, state: &mut RegState) -> Vec<Instruction> {
+    fn compile(&self, _state: &mut RegState) -> Vec<Instruction> {
         vec![Instruction::ProLog]
     }
 }
 // Leave(Leave),
 impl Compile for ir::Leave {
-    fn compile(&self, state: &mut RegState) -> Vec<Instruction> {
+    fn compile(&self, _state: &mut RegState) -> Vec<Instruction> {
         vec![Instruction::Epilog]
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::ir;
-    use crate::lexer::lex;
-    use crate::parse::parse;
-    use pretty_assertions::assert_eq;
+    // use super::*;
+    // use crate::ir;
+    // use crate::lexer::lex;
+    // use crate::parse::parse;
+    // use pretty_assertions::assert_eq;
 
-    fn setup(input: &str) -> Vec<Instruction> {
-        lex(input)
-            .and_then(parse)
-            .and_then(ir::code_gen)
-            .and_then(compile_ir_code)
-            .unwrap()
-    }
+    // fn setup(input: &str) -> Vec<Instruction> {
+    //     lex(input)
+    //         .and_then(parse)
+    //         .and_then(ir::code_gen)
+    //         .and_then(compile_ir_code)
+    //         .unwrap()
+    // }
     // #[test]
     // fn basic_test() {
     //     let left = setup("fn main() { 1 + 2; }");

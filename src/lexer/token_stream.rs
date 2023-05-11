@@ -15,13 +15,13 @@ impl TokenStream {
         self.idx < self.stream.len() - 1
     }
 
-    pub fn next<'a>(&'a mut self) -> Option<&'a Box<dyn Token>> {
-        let result = self.stream.get(self.idx);
-        self.idx += 1;
-        result
-    }
+    // pub fn next(&mut self) -> Option<&dyn Token> {
+    //     let result = self.stream.get(self.idx).map(|t| &**t)
+    //     self.idx += 1;
+    //     result
+    // }
 
-    pub fn next_as<'a, Expected>(&'a mut self) -> Option<&'a Expected>
+    pub fn next_as<Expected>(&mut self) -> Option<&Expected>
     where
         Expected: Token,
     {
@@ -33,7 +33,7 @@ impl TokenStream {
         result
     }
 
-    pub fn next_if<'a, Expected>(&'a mut self) -> Option<&'a Expected>
+    pub fn next_if<Expected>(&mut self) -> Option<&Expected>
     where
         Expected: Token,
     {
@@ -41,19 +41,20 @@ impl TokenStream {
             .stream
             .get(self.idx)
             .and_then(|i| i.as_any().downcast_ref::<Expected>());
-        if result.is_none() {
-            return None;
-        }
+        // if result.is_none() {
+        //     return None;
+        // }
+        result?;
         self.idx += 1;
         result
     }
 
-    pub fn previous<'a>(&'a mut self) -> Option<&'a Box<dyn Token>> {
-        if self.idx == 0 {
-            return None;
-        }
-        self.stream.get(self.idx.saturating_sub(1))
-    }
+    // pub fn previous<'a>(&'a mut self) -> Option<&'a Box<dyn Token>> {
+    //     if self.idx == 0 {
+    //         return None;
+    //     }
+    //     self.stream.get(self.idx.saturating_sub(1))
+    // }
 
     pub fn is_peek_a<Expected: 'static>(&self) -> bool
     where
@@ -65,11 +66,11 @@ impl TokenStream {
             .is_some()
     }
 
-    pub fn peek_blind<'a>(&'a mut self) -> Option<&'a Box<dyn Token>> {
-        self.stream.get(self.idx)
+    pub fn peek_blind(&mut self) -> Option<&dyn Token> {
+        self.stream.get(self.idx).map(|i| &**i)
     }
 
-    pub fn peek<'a, Expected>(&'a self) -> Option<&'a Expected>
+    pub fn peek<Expected>(&self) -> Option<&Expected>
     where
         Expected: Token,
     {
@@ -78,18 +79,18 @@ impl TokenStream {
             .and_then(|i| i.as_any().downcast_ref::<Expected>())
     }
 
-    pub fn peek_nth<'a, Expected>(&'a self, nth: usize) -> Option<&'a Expected>
-    where
-        Expected: Token,
-    {
-        self.stream
-            .get(self.idx + nth.saturating_sub(1))
-            .and_then(|i| i.as_any().downcast_ref::<Expected>())
-    }
+    // pub fn peek_nth<'a, Expected>(&'a self, nth: usize) -> Option<&'a Expected>
+    // where
+    //     Expected: Token,
+    // {
+    //     self.stream
+    //         .get(self.idx + nth.saturating_sub(1))
+    //         .and_then(|i| i.as_any().downcast_ref::<Expected>())
+    // }
 
-    pub fn reset(&mut self) {
-        self.idx = 0;
-    }
+    // pub fn reset(&mut self) {
+    //     self.idx = 0;
+    // }
 }
 
 // #[test]

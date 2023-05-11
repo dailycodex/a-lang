@@ -39,7 +39,6 @@ type Token = Box<dyn super::Token>;
 
 pub struct Lexer<'a> {
     src: Peekable<Chars<'a>>,
-    len: usize,
     span: Span,
     last_chr_len: usize,
 }
@@ -47,19 +46,10 @@ pub struct Lexer<'a> {
 impl<'a> Lexer<'a> {
     pub fn new(src: &'a str) -> Self {
         Self {
-            len: src.len(),
             src: src.chars().peekable(),
             span: Span::default(),
             last_chr_len: 0,
         }
-    }
-
-    fn tp(&self) -> usize {
-        self.span.idx_end
-    }
-
-    fn is_end(&mut self) -> bool {
-        self.tp() >= self.len.saturating_sub(1)
     }
 
     fn peek(&mut self) -> Option<&char> {
@@ -141,7 +131,7 @@ impl<'a> Lexer<'a> {
         Some(Box::new(LitChar::new(string, self.span())))
     }
     fn take_while(&mut self, expected: char) {
-        while let Some(_) = self.next_if(|c| c != expected) {}
+        while self.next_if(|c| c != expected).is_some() {}
     }
 
     fn comment(&mut self) -> Option<Token> {

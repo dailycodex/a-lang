@@ -256,8 +256,7 @@ impl AstVisitor for IrGenerator {
         } = bin;
         let lhs = self.visit_expr(left);
         let rhs = self.visit_expr(right);
-        let des = self.binary(op, lhs, rhs);
-        des
+        self.binary(op, lhs, rhs)
     }
 
     fn visit_item_fn(&mut self, item_fn: &ItemFn) {
@@ -265,7 +264,7 @@ impl AstVisitor for IrGenerator {
             name,
             params,
             block,
-            ret_type,
+            ret_type: _,
             ..
         } = item_fn;
 
@@ -277,7 +276,7 @@ impl AstVisitor for IrGenerator {
             .collect();
 
         self.push_to_block(Enter);
-        self.visit_expr_block(&block);
+        self.visit_expr_block(block);
         self.def_label(".exit".into());
         self.push_to_block(Leave);
 
@@ -304,10 +303,10 @@ impl AstVisitor for IrGenerator {
 
     fn visit_expr_if(&mut self, expr_if: &ExprIf) -> Reg {
         let ExprIf {
-            if_token,
+            if_token: _,
             cond,
             then_branch,
-            else_branch,
+            else_branch: _,
         } = expr_if;
         // pub struct ExprIf {
         //     pub if_token: super::keyword::If,
