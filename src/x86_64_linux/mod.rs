@@ -65,8 +65,8 @@ impl fmt::Display for Instruction {
             Self::Cmp(lhs, rhs) => writeln!(f, "  cmp   {lhs},   {rhs}"),
             Self::Test(lhs, rhs) => writeln!(f, "  test  {lhs},   {rhs}"),
             Self::SetG => writeln!(f, "  setg   al"),
-            Self::ProLog => writeln!(f, "  push  rbp  mov   rbp,    rsp"),
-            Self::Epilog => writeln!(f, "  mov   rsp,    rbp  pop   rbp  ret"),
+            Self::ProLog => writeln!(f, "  push  rbp\n  mov   rbp,    rsp"),
+            Self::Epilog => writeln!(f, "  mov   rsp,    rbp\n  pop   rbp\n  ret"),
         }
     }
 }
